@@ -1,4 +1,4 @@
-// sim.worker.js — обновлённое ядро: реген полей/леса, голод/жажда, динамический выбор работы
+// sim.worker.js — Web Worker с ядром симуляции (исправлено: убрали смерть от жажды, замедлили падение, режем только по голоду)
 
 import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
@@ -12,6 +12,7 @@ const TILE_WATER  = 1;
 const TILE_FOREST = 2;
 const TILE_FIELD  = 3;
 
+// Карта
 const tiles = new Uint8Array(MAP_SIZE);
 function genMap() {
   for (let i = 0; i < MAP_SIZE; i++) {
@@ -32,9 +33,9 @@ const MAX_AGENTS = 200;
 const posX   = new Uint8Array(MAX_AGENTS);
 const posY   = new Uint8Array(MAX_AGENTS);
 const age    = new Uint8Array(MAX_AGENTS);
-const hunger = new Uint8Array(MAX_AGENTS);
-const thirst = new Uint8Array(MAX_AGENTS);
-const energy = new Uint8Array(MAX_AGENTS);
+const hunger = new Float32Array(MAX_AGENTS);
+const thirst = new Float32Array(MAX_AGENTS);
+const energy = new Float32Array(MAX_AGENTS);
 const role   = new Uint8Array(MAX_AGENTS);
 let agentCount = 0;
 
@@ -62,17 +63,17 @@ const world = {
   get stockFood() { return _stockFood; },
   set stockFood(v) { _stockFood = v; },
   get stockWood() { return _stockWood; },
-  set stockWood(v) { _stockWood = v; },
-  fieldCount: 0,
-  forestCount: 0
+  set stockWood(v) { _stockWood = v; }
 };
 
+// Спавн крестьян
 function spawnAgent(x, y) {
   const i = agentCount++;
-  posX[i] = x; posY[i] = y;
-  age[i] = Math.random() * 30 + 10 | 0;
+  posX[i]   = x;
+  posY[i]   = y;
+  age[i]    = Math.random() * 30 + 10 | 0;
   hunger[i] = thirst[i] = energy[i] = 100;
-  role[i] = 0;
+  role[i]   = 0;
 }
 for (let i = 0; i < 20; i++) {
   spawnAgent(
@@ -81,8 +82,11 @@ for (let i = 0; i < 20; i++) {
   );
 }
 
+// Инициализируем AI
 initFarmer(world);
 initBuilder(world);
+
+// Начальная передача карты
 postMessage({ type:'init', mapW:MAP_W, mapH:MAP_H, tiles });
 
 let last = performance.now();
@@ -91,63 +95,44 @@ function tick() {
   const dt  = (now - last) / 1000;
   last = now;
 
-  // 1. Голод и жажда
+  // 1. Биологические нужды
   for (let i = 0; i < agentCount; i++) {
-    hunger[i] = Math.max(0, hunger[i] - dt * 2);   // −2 единицы в секунду
-    thirst[i] = Math.max(0, thirst[i] - dt * 3);   // −3 ед.
-    energy[i] = Math.min(100, energy[i] + dt * 1); // +1 ед. в сек. (отдых)
-    // смерть от голода/жажды
-    if (hunger[i] === 0 || thirst[i] === 0) {
-      // убираем агента и сдвигаем последний на место i
+    hunger[i] = Math.max(0, hunger[i] - dt * 0.2);  // −0.2 ед/сек
+    thirst[i] = Math.max(0, thirst[i] - dt * 0.2);  // −0.2 ед/сек
+    energy[i] = Math.min(100, energy[i] + dt * 0.5);// +0.5 ед/сек
+
+    // смерть только от голода
+    if (hunger[i] === 0) {
       const lastId = --agentCount;
       posX[i]=posX[lastId]; posY[i]=posY[lastId];
       age[i]=age[lastId]; hunger[i]=hunger[lastId];
       thirst[i]=thirst[lastId]; energy[i]=energy[lastId];
       role[i]=role[lastId];
-      i--; 
+      i--;
       continue;
     }
   }
 
-  // 2. Реген полей и леса (ежесекундно)
+  // 2. Реген поля и леса (слабенький шанс)
   for (let i = 0; i < MAP_SIZE; i++) {
     if (tiles[i] === TILE_GRASS && Math.random() < 0.0005) {
-      tiles[i] = TILE_FIELD;         // мелкое "автопосев"
+      tiles[i] = TILE_FIELD;
     }
     if (tiles[i] === TILE_GRASS && Math.random() < 0.0003) {
-      tiles[i] = TILE_FOREST;        // случайный рост деревьев
+      tiles[i] = TILE_FOREST;
     }
   }
 
-  // 3. Считаем остатки полей/леса
-  let fC=0, F=0;
-  for (let t of tiles) {
-    if (t === TILE_FIELD) fC++;
-    else if (t === TILE_FOREST) F++;
-  }
-  world.fieldCount  = fC;
-  world.forestCount = F;
-
-  // 4. Обновляем агентов
+  // 3. Обновляем агентов
   for (let i = 0; i < agentCount; i++) {
     updateFarmer(i, dt, world);
     updateBuilder(i, dt, world);
   }
 
-  // 5. Отправляем UI
+  // 4. Отправляем в UI
   postMessage({
     type: 'update',
     tiles,
     agents: { x: posX.slice(0,agentCount), y: posY.slice(0,agentCount) },
     houses: Array.from({length:houseCount}, (_,i)=>({
-      x:houseX[i], y:houseY[i],
-      capacity:houseCapacity[i],
-      occupants:houseOccupants[i]
-    })),
-    stats: { pop:agentCount, food:_stockFood, wood:_stockWood },
-    fps: Math.round(1/dt)
-  });
-
-  setTimeout(tick, 1000/30);
-}
-tick();
+      x:houseX[i
