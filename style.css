@@ -1,1 +1,42 @@
+/* style.css  – минимальный мобильный стиль для Village Sim */
 
+/* Сброс отступов и размеров по умолчанию */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Канвас занимает весь экран */
+#game {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  image-rendering: pixelated;      /* чёткие пиксели при масштабировании */
+  background: #1a1c1d;             /* тёмный «фон за картой» */
+}
+
+/* Лёгкий полупрозрачный HUD в верх-левом углу */
+#hud {
+  position: fixed;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;                 /* читаемо даже на телефоне */
+  line-height: 1.2;
+  color: #f8f8f8;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px 6px;
+  border-radius: 4px;
+  pointer-events: none;            /* клики проходят к канвасу */
+}
+
+/* Каждая метрика — отдельная строка */
+#hud span {
+  white-space: nowrap;
+}
