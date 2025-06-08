@@ -1,1 +1,10 @@
+// data/resources.json
 
+{
+  "food": {
+    "basePrice": 1
+  },
+  "wood": {
+    "basePrice": 0.5
+  }
+}
