@@ -1,1 +1,19 @@
+// data/jobs.json
 
+{
+  "harvest": {
+    "targetTile": 3,      // field → food
+    "resource": "food",
+    "workPerAction": 1    // units produced per action
+  },
+  "chop": {
+    "targetTile": 2,      // forest → wood
+    "resource": "wood",
+    "workPerAction": 1
+  },
+  "build_house": {
+    "resource": "wood",
+    "cost": 15,           // бревен на один дом
+    "capacity": 4         // вместимость дома
+  }
+}
