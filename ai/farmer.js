@@ -1,14 +1,11 @@
-// ai/farmer.js — универсальный NPC: пьёт, ест, рубит лес или собирает урожай по «рынку»
+// ai/farmer.js — универсальный NPC: пьёт, ест, собирает урожай или рубит лес
 
-// Обязательно объявляем все константы тайлов
-const TILE_GRASS  = 0;
+const TILE_GRASS  = 0;   // ← БЫЛО НЕОБХОДИМО
 const TILE_WATER  = 1;
 const TILE_FOREST = 2;
 const TILE_FIELD  = 3;
 
-export function init(world) {
-  // инициализация не нужна
-}
+export function init() { /* пусто */ }
 
 export function update(id, dt, world) {
   const {
@@ -18,88 +15,71 @@ export function update(id, dt, world) {
     agentCount
   } = world;
 
-  // 1) Питьё: если жажда <30 — ищем воду и пьём
+  /* 1. Питьё ------------------------------------------------------------- */
   if (thirst[id] < 30) {
-    const idx0 = posY[id] * MAP_W + posX[id];
-    // если стоим на воде — напиваемся
-    if (tiles[idx0] === TILE_WATER) {
+    const here = posY[id] * MAP_W + posX[id];
+    if (tiles[here] === TILE_WATER) {            // стоим на воде
       thirst[id] = 100;
       return;
     }
-    // ищем ближайший водоём
     let best = Infinity, tx = posX[id], ty = posY[id];
-    for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i] === TILE_WATER) {
-        const x = i % MAP_W, y = (i / MAP_W) | 0;
-        const dx = x - posX[id], dy = y - posY[id];
-        const d = dx*dx + dy*dy;
-        if (d < best) { best = d; tx = x; ty = y; }
-      }
+    for (let i = 0; i < tiles.length; i++) if (tiles[i] === TILE_WATER) {
+      const x = i % MAP_W, y = (i / MAP_W) | 0,
+            dx = x - posX[id], dy = y - posY[id],
+            d  = dx*dx + dy*dy;
+      if (d < best) { best = d; tx = x; ty = y; }
     }
-    // шаг к воде
-    const dx = tx - posX[id], dy = ty - posY[id];
-    if (Math.abs(dx) > Math.abs(dy)) posX[id] += Math.sign(dx);
-    else                              posY[id] += Math.sign(dy);
+    moveStep(id, tx, ty);                        // шаг к воде
     return;
   }
 
-  // 2) Еда: если голод <30 и есть еда на складе — едим
+  /* 2. Еда ---------------------------------------------------------------- */
   if (hunger[id] < 30 && world.stockFood > 0) {
-    world.stockFood--;
+    world.stockFood--;          // тратим еду
     hunger[id] = 100;
     return;
   }
 
-  // 3) Экономическая логика (цены спрос/запас)
-  const baseFoodPrice = 1, baseWoodPrice = 0.5;
+  /* 3. «Рынок» и выбор работы ------------------------------------------- */
+  const baseFood = 1, baseWood = 0.5;
   const priceFood = Math.min(
-    Math.max(baseFoodPrice * agentCount / Math.max(world.stockFood, 1), 0.5),
-    8
+    Math.max(baseFood * agentCount / Math.max(world.stockFood, 1), 0.5), 8
   );
   const priceWood = Math.min(
-    Math.max(baseWoodPrice * agentCount / Math.max(world.stockWood, 1), 0.3),
-    6
+    Math.max(baseWood * agentCount / Math.max(world.stockWood, 1), 0.3), 6
   );
-
-  // умение на основе возраста (0.2…1.0)
   const skill = Math.max(0.2, Math.min(1, age[id] / 50));
 
-  // прибыль за «еду» и «дрова»
   const profitHarvest = priceFood * skill;
   const profitChop    = priceWood * skill;
 
-  // 4) выбор задачи
   const harvestMode = profitHarvest >= profitChop;
   const targetType  = harvestMode ? TILE_FIELD : TILE_FOREST;
 
-  // 5) если на нужном тайле — выполняем работу
-  const idx1 = posY[id] * MAP_W + posX[id];
-  if (tiles[idx1] === targetType) {
-    if (harvestMode) {
-      tiles[idx1] = TILE_GRASS;
-      world.stockFood++;
-    } else {
-      tiles[idx1] = TILE_GRASS;
-      world.stockWood++;
-    }
+  /* 4. Работа, если стоим на нужном тайле -------------------------------- */
+  const idx = posY[id] * MAP_W + posX[id];
+  if (tiles[idx] === targetType) {
+    tiles[idx] = TILE_GRASS;               // собираем → травяной тайл
+    harvestMode ? world.stockFood++ : world.stockWood++;
     return;
   }
 
-  // 6) поиск ближайшего тайла-цели
-  let bestD = Infinity, tx2 = posX[id], ty2 = posY[id];
-  for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] === targetType) {
-      const x = i % MAP_W, y = (i / MAP_W) | 0;
-      const dx = x - posX[id], dy = y - posY[id];
-      const d  = dx*dx + dy*dy;
-      if (d < bestD) {
-        bestD = d; tx2 = x; ty2 = y;
-      }
-    }
+  /* 5. Поиск ближайшего тайла-цели и шаг к нему --------------------------- */
+  let best = Infinity, tx = posX[id], ty = posY[id];
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === targetType) {
+    const x = i % MAP_W, y = (i / MAP_W) | 0,
+          dx = x - posX[id], dy = y - posY[id],
+          d  = dx*dx + dy*dy;
+    if (d < best) { best = d; tx = x; ty = y; }
   }
+  moveStep(id, tx, ty);
+}
 
-  // 7) шаг к цели
-  const dx2 = tx2 - posX[id], dy2 = ty2 - posY[id];
-  if (Math.abs(dx2) > Math.abs(dy2)) posX[id] += Math.sign(dx2);
-  else                                posY[id] += Math.sign(dy2);
+/* ──────────────────────────────────────────────────────────────────────── */
+function moveStep(id, tx, ty) {          // малый помощник для шага
+  if (Math.abs(tx - posX[id]) > Math.abs(ty - posY[id])) {
+    posX[id] += Math.sign(tx - posX[id]);
+  } else {
+    posY[id] += Math.sign(ty - posY[id]);
+  }
 }
