@@ -15,17 +15,27 @@ const TILE_FIELD  = 3;
 
 // Карта
 const tiles = new Uint8Array(MAP_SIZE);
-function genMap() {
-  for (let i = 0; i < MAP_SIZE; i++) {
-    const r = Math.random();
-    tiles[i] = r < 0.08
-      ? TILE_WATER
-      : r < 0.18
-        ? TILE_FIELD
-        : r < 0.40
-          ? TILE_FOREST
-          : TILE_GRASS;
+function addTerrain(type, seeds, steps) {
+  for (let s = 0; s < seeds; s++) {
+    let x = Math.random() * MAP_W | 0;
+    let y = Math.random() * MAP_H | 0;
+    for (let i = 0; i < steps; i++) {
+      tiles[y * MAP_W + x] = type;
+      if (Math.random() < 0.7) {
+        x += (Math.random() * 3 | 0) - 1;
+        y += (Math.random() * 3 | 0) - 1;
+        if (x < 0) x = 0; if (x >= MAP_W) x = MAP_W - 1;
+        if (y < 0) y = 0; if (y >= MAP_H) y = MAP_H - 1;
+      }
+    }
   }
+}
+
+function genMap() {
+  tiles.fill(TILE_GRASS);
+  addTerrain(TILE_WATER, 8, 60);
+  addTerrain(TILE_FIELD, 10, 80);
+  addTerrain(TILE_FOREST, 12, 100);
 }
 genMap();
 const reserved = new Int16Array(MAP_SIZE).fill(-1);
@@ -57,6 +67,8 @@ let houseCount = 0;
 // Ресурсы
 let _stockFood = 50;
 let _stockWood = 100;
+let _priceFood = 1;
+let _priceWood = 0.5;
 
 // Мир для AI
 const world = {
@@ -70,7 +82,11 @@ const world = {
   get stockFood() { return _stockFood; },
   set stockFood(v) { _stockFood = v; },
   get stockWood() { return _stockWood; },
-  set stockWood(v) { _stockWood = v; }
+  set stockWood(v) { _stockWood = v; },
+  get priceFood() { return _priceFood; },
+  set priceFood(v) { _priceFood = v; },
+  get priceWood() { return _priceWood; },
+  set priceWood(v) { _priceWood = v; }
 };
 
 // Спавн крестьян
@@ -96,6 +112,21 @@ for (let i = 0; i < 20; i++) {
 // Инициализируем AI
 initFarmer(world);
 initBuilder(world);
+
+function updatePrices(dt) {
+  const baseFood = 1;
+  const baseWood = 0.5;
+  const targetFood = baseFood * agentCount / Math.max(_stockFood, 1);
+  const targetWood = baseWood * agentCount / Math.max(_stockWood, 1);
+  _priceFood += (_priceFood ? (targetFood - _priceFood) : targetFood) * 0.1 * dt;
+  _priceWood += (_priceWood ? (targetWood - _priceWood) : targetWood) * 0.1 * dt;
+  if (Math.random() < dt * 0.1) {
+    _priceFood *= 1 + (Math.random() - 0.5) * 0.02;
+    _priceWood *= 1 + (Math.random() - 0.5) * 0.02;
+  }
+  _priceFood = Math.min(Math.max(_priceFood, 0.5), 8);
+  _priceWood = Math.min(Math.max(_priceWood, 0.3), 6);
+}
 
 // Начальная передача карты
 postMessage({ type:'init', mapW:MAP_W, mapH:MAP_H, tiles });
@@ -137,6 +168,8 @@ function tick() {
     }
   }
 
+  updatePrices(dt);
+
   // 3. Обновляем агентов
   for (let i = 0; i < agentCount; i++) {
     updateFarmer(i, dt, world);
@@ -171,7 +204,7 @@ function tick() {
       capacity: houseCapacity[i],
       occupants: houseOccupants[i]
     })),
-    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, houses: houseCount },
+    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount },
     fps: Math.round(1 / dt)
   });
 

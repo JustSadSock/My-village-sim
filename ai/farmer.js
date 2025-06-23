@@ -99,14 +99,8 @@ export function update (id, dt, world) {
   }
 
   /* ---------- 3. Экономика ресурсов ----------------------------------- */
-  const baseFood = 1;
-  const baseWood = 0.5;
-  const foodPrice = Math.min(
-    Math.max(baseFood * agentCount / Math.max(stockFood, 1), 0.5), 8
-  );
-  const woodPrice = Math.min(
-    Math.max(baseWood * agentCount / Math.max(stockWood, 1), 0.3), 6
-  );
+  const foodPrice = world.priceFood;
+  const woodPrice = world.priceWood;
 
   /* ---------- 4. Навык и прибыль -------------------------------------- */
   const harvestSpeed = 1 + skillFood[id] * 0.1;

@@ -7,6 +7,8 @@ const hud = {
   pop:    document.getElementById('pop'),
   food:   document.getElementById('food'),
   wood:   document.getElementById('wood'),
+  priceFood: document.getElementById('price-food'),
+  priceWood: document.getElementById('price-wood'),
   houses: document.getElementById('houses'),
   fps:    document.getElementById('fps'),
 };
@@ -15,7 +17,7 @@ const detailsBtn = document.getElementById('details-btn');
 
 let mapW = 0, mapH = 0;
 let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [] }, houses = [];
-let stats = { pop: 0, food: 0, wood: 0, houses: 0 }, fps = 0;
+let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0 }, fps = 0;
 let lastTime = performance.now();
 // убираем смену дня и ночи
 
@@ -94,23 +96,23 @@ function render() {
       for (let x = 0; x < mapW; x++) {
         const t = tiles[y * mapW + x];
         // 0 = grass, 1 = water, 2 = forest, 3 = field
-        ctx.fillStyle = t === 1 ? '#28f'
-                       : t === 2 ? '#2a2'
-                       : t === 3 ? '#ca5'
-                       : '#3c3';
+        if (t === 1) ctx.fillStyle = (x + y) % 2 ? '#28f' : '#39f';
+        else if (t === 2) ctx.fillStyle = (x + y) % 2 ? '#2a2' : '#1f2';
+        else if (t === 3) ctx.fillStyle = (x + y) % 2 ? '#ca5' : '#db6';
+        else ctx.fillStyle = (x + y) % 2 ? '#3c3' : '#4d4';
         ctx.fillRect(x * ts, y * ts, ts, ts);
       }
     }
 
     // дома
-    ctx.fillStyle = '#a52';
     houses.forEach(h => {
+      ctx.fillStyle = (h.x + h.y) % 2 ? '#a52' : '#b63';
       ctx.fillRect(h.x * ts, h.y * ts, ts, ts);
     });
 
     // поселенцы
-    ctx.fillStyle = '#eee';
     for (let i = 0; i < agents.x.length; i++) {
+      ctx.fillStyle = agents.age[i] > 50 ? '#ccc' : '#eee';
       ctx.fillRect(
         agents.x[i] * ts,
         agents.y[i] * ts,
@@ -125,11 +127,14 @@ function render() {
   hud.pop.textContent  = `Pop:  ${stats.pop}`;
   hud.food.textContent   = `Food: ${stats.food}`;
   hud.wood.textContent   = `Wood: ${stats.wood}`;
+  hud.priceFood.textContent = `F$ ${stats.priceFood.toFixed(2)}`;
+  hud.priceWood.textContent = `W$ ${stats.priceWood.toFixed(2)}`;
   hud.houses.textContent = `Houses: ${stats.houses}`;
   hud.fps.textContent    = `FPS:  ${fps}`;
 
   if (panel.style.display !== 'none') {
-    let html = `<b>World</b> pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses}<br/><br/>`;
+    let html = `<b>World</b> pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses}<br/>` +
+               `priceF:${stats.priceFood.toFixed(2)} priceW:${stats.priceWood.toFixed(2)}<br/><br/>`;
     for (let i = 0; i < agents.x.length; i++) {
       html += `#${i} age:${agents.age[i].toFixed(1)} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}<br/>`;
     }

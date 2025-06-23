@@ -31,18 +31,33 @@ export function update(id, dt, world) {
   const WOOD_COST = 15;
   if (stockWood < WOOD_COST) return;
 
-  // 4. Ищем первую свободную клетку травы (tiles[i] === 0) без дома
-  let buildX = -1, buildY = -1;
-  for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] === 0) {
-      const x = i % MAP_W;
-      const y = (i / MAP_W) | 0;
-      let occupied = false;
-      for (let h = 0; h < houseCount; h++) {
-        if (houseX[h] === x && houseY[h] === y) { occupied = true; break; }
-      }
-      if (!occupied) { buildX = x; buildY = y; break; }
+  // 4. Выбираем подходящую клетку травы без дома
+  let buildX = -1, buildY = -1, bestScore = -Infinity;
+  for (let a = 0; a < 100; a++) {
+    const i = Math.random() * tiles.length | 0;
+    if (tiles[i] !== 0) continue;
+    const x = i % MAP_W;
+    const y = (i / MAP_W) | 0;
+    let occupied = false;
+    for (let h = 0; h < houseCount; h++) {
+      if (houseX[h] === x && houseY[h] === y) { occupied = true; break; }
     }
+    if (occupied) continue;
+    let score = 0;
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) continue;
+        const t = tiles[ny * MAP_W + nx];
+        if (t === 3) score += 3;      // рядом с полем
+        if (t === 1) score -= 2;      // не строим около воды
+      }
+    }
+    for (let h = 0; h < houseCount; h++) {
+      const dx = houseX[h] - x, dy = houseY[h] - y;
+      if (dx * dx + dy * dy < 25) score += 2; // возле других домов
+    }
+    if (score > bestScore) { bestScore = score; buildX = x; buildY = y; }
   }
   if (buildX < 0) return;  // негде строить
 
