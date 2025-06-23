@@ -55,6 +55,17 @@ export function update (id, dt, world) {
     }
   }
 
+  // дети до 16 лет не покидают дом
+  if (age[id] < 16 && homeId[id] >= 0) {
+    const hx = houseX[homeId[id]], hy = houseY[homeId[id]];
+    if (posX[id] === hx && posY[id] === hy) {
+      energy[id] = Math.min(100, energy[id] + dt * 10);
+    } else {
+      stepToward(id, hx, hy, world);
+    }
+    return;
+  }
+
   // отдых в доме при низкой энергии
   if (energy[id] < 20 && houseCount > 0) {
     let best = Infinity, tx = posX[id], ty = posY[id];
@@ -115,6 +126,7 @@ export function update (id, dt, world) {
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
+  if (jobType[id] === 3) return;
   if (workTimer[id] > 0) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {

@@ -14,6 +14,7 @@ const hud = {
 };
 const panel = document.getElementById('villagers');
 const detailsBtn = document.getElementById('details-btn');
+const speedControls = document.getElementById('speed-controls');
 
 let mapW = 0, mapH = 0;
 let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [] }, houses = [];
@@ -43,6 +44,12 @@ window.addEventListener('keydown', e => {
   if (e.key === 'v') togglePanel();
 });
 detailsBtn.addEventListener('click', togglePanel);
+if (speedControls) {
+  speedControls.addEventListener('click', e => {
+    const v = e.target.getAttribute('data-s');
+    if (v !== null) worker.postMessage({type:'speed', value: Number(v)});
+  });
+}
 
 // панорамирование
 let panX = 0, panY = 0, panning = false, startX = 0, startY = 0;
