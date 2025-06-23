@@ -41,6 +41,7 @@ const homeId = new Int16Array(MAX_AGENTS);
 const skillFood = new Uint16Array(MAX_AGENTS);
 const skillWood = new Uint16Array(MAX_AGENTS);
 const workTimer = new Float32Array(MAX_AGENTS);
+const jobType  = new Uint8Array(MAX_AGENTS);
 const role   = new Uint8Array(MAX_AGENTS);
 let agentCount = 0;
 
