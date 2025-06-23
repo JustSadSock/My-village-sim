@@ -7,6 +7,7 @@ const MAP_W    = 64;
 const MAP_H    = 64;
 const MAP_SIZE = MAP_W * MAP_H;
 const AGE_SPEED = 1 / 60; // 1 year per 60 sec
+const HUNGER_RATE = 100 / 60; // 100 hunger per year
 
 const TILE_GRASS  = 0;
 const TILE_WATER  = 1;
@@ -54,6 +55,8 @@ const skillWood = new Uint16Array(MAX_AGENTS);
 const workTimer = new Float32Array(MAX_AGENTS);
 const jobType  = new Uint8Array(MAX_AGENTS);
 const role   = new Uint8Array(MAX_AGENTS);
+const buildX  = new Int16Array(MAX_AGENTS);
+const buildY  = new Int16Array(MAX_AGENTS);
 let agentCount = 0;
 
 // Дома
@@ -74,6 +77,7 @@ let _priceWood = 0.5;
 const world = {
   MAP_W, MAP_H, tiles, reserved,
   posX, posY, age, hunger, thirst, energy, homeId, skillFood, skillWood, workTimer, jobType, role,
+  buildX, buildY,
   houseX, houseY, houseCapacity, houseOccupants,
   get agentCount() { return agentCount; },
   set agentCount(v) { agentCount = v; },
@@ -90,17 +94,18 @@ const world = {
 };
 
 // Спавн крестьян
-function spawnAgent(x, y) {
+function spawnAgent(x, y, a = Math.random() * 30 + 10) {
   const i = agentCount++;
   posX[i]   = x;
   posY[i]   = y;
-  age[i]    = Math.random() * 30 + 10;
+  age[i]    = a;
   hunger[i] = thirst[i] = energy[i] = 100;
   role[i]   = 0;
   homeId[i] = -1;
   skillFood[i]=0;
   skillWood[i]=0;
   workTimer[i]=0; jobType[i]=0;
+  buildX[i] = -1; buildY[i] = -1;
 }
 for (let i = 0; i < 20; i++) {
   spawnAgent(
@@ -132,14 +137,19 @@ function updatePrices(dt) {
 postMessage({ type:'init', mapW:MAP_W, mapH:MAP_H, tiles });
 
 let last = performance.now();
+let gameSpeed = 1;
+self.onmessage = e => {
+  if (e.data && e.data.type === 'speed') gameSpeed = e.data.value;
+};
 function tick() {
   const now = performance.now();
-  const dt  = (now - last) / 1000;
+  const dt  = (now - last) / 1000 * gameSpeed;
   last = now;
 
   // 1. Биологические нужды
   for (let i = 0; i < agentCount; i++) {
-    hunger[i] = Math.max(0, hunger[i] - dt * 0.5);  // быстрее голодают
+    const hungerRate = HUNGER_RATE * (age[i] < 10 ? 0.5 : 1);
+    hunger[i] = Math.max(0, hunger[i] - dt * hungerRate);
     thirst[i] = Math.max(0, thirst[i] - dt * 0.2);  // −0.2 ед/сек
     energy[i] = Math.min(100, energy[i] + dt * 0.5);// +0.5 ед/сек
     age[i]   += dt * AGE_SPEED;
@@ -178,10 +188,16 @@ function tick() {
 
   // Размножение в домах
   for (let h = 0; h < houseCount && agentCount < MAX_AGENTS; h++) {
-    if (houseOccupants[h] >= 2 && houseOccupants[h] < 5 && Math.random() < dt * 0.01) {
-      spawnAgent(houseX[h], houseY[h]);
-      homeId[agentCount - 1] = h;
-      houseOccupants[h]++;
+    if (houseOccupants[h] >= 2 && houseOccupants[h] < houseCapacity[h]) {
+      let adults = 0;
+      for (let i = 0; i < agentCount; i++) {
+        if (homeId[i] === h && age[i] >= 16 && age[i] <= 45) adults++;
+      }
+      if (adults >= 2 && Math.random() < dt * 0.01) {
+        spawnAgent(houseX[h], houseY[h], 0);
+        homeId[agentCount - 1] = h;
+        houseOccupants[h]++;
+      }
     }
   }
 

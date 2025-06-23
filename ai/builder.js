@@ -1,75 +1,78 @@
-// ai/builder.js — модуль, позволяющий NPC самостоятельно строить дома
+// ai/builder.js — поселенцы строят дома при нехватке жилья
 
-export function init() {
-  // инициализация не нужна
-}
+const TILE_GRASS = 0;
+
+const TIME_BUILD = 8;            // время постройки
+const WOOD_COST  = 15;
+
+export function init() {}
 
 export function update(id, dt, world) {
   const {
-    posX, posY,
-    MAP_W, MAP_H,
-    tiles,
-    stockWood,
-    houseX, houseY, houseCapacity, houseOccupants,
-    homeId,
-    agentCount, houseCount
+    age, posX, posY, homeId,
+    houseX, houseY, houseOccupants, houseCount,
+    MAP_W, MAP_H, tiles, reserved,
+    stockWood, workTimer, jobType,
+    buildX, buildY
   } = world;
 
-  // 1. Определяем, есть ли свободные дома
-  let hasFree = false, extras = 0, homeless = 0;
-  for (let i = 0; i < houseCount; i++) {
-    if (houseOccupants[i] < 2) hasFree = true;
-    if (houseOccupants[i] > 2) extras += houseOccupants[i] - 2;
-  }
-  for (let i = 0; i < agentCount; i++) {
-    if (homeId[i] === -1) homeless++;
-  }
-  const demand = hasFree ? 0 : (homeless + extras);
-  if (demand <= 0) return;
+  if (age[id] < 16) return;
+  const h = homeId[id];
+  if (h < 0 || h >= houseCount) return;
+  if (houseOccupants[h] <= 2) return;
 
-  // 3. Проверка ресурсов: на постройку нужно WOOD_COST бревен
-  const WOOD_COST = 15;
+  if (jobType[id] === 3) {
+    if (posX[id] === buildX[id] && posY[id] === buildY[id]) {
+      workTimer[id] -= dt;
+      if (workTimer[id] <= 0) {
+        if (stockWood >= WOOD_COST) {
+          world.stockWood -= WOOD_COST;
+          const hc = world.houseCount;
+          world.houseX[hc] = buildX[id];
+          world.houseY[hc] = buildY[id];
+          world.houseCapacity[hc] = 5;
+          world.houseOccupants[hc] = 0;
+          world.houseCount = hc + 1;
+        }
+        reserved[buildY[id] * MAP_W + buildX[id]] = -1;
+        jobType[id] = 0;
+        buildX[id] = -1; buildY[id] = -1;
+      }
+    } else {
+      stepToward(id, buildX[id], buildY[id], world);
+    }
+    return;
+  }
+
   if (stockWood < WOOD_COST) return;
 
-  // 4. Выбираем подходящую клетку травы без дома
-  let buildX = -1, buildY = -1, bestScore = -Infinity;
-  for (let a = 0; a < 100; a++) {
-    const i = Math.random() * tiles.length | 0;
-    if (tiles[i] !== 0) continue;
-    const x = i % MAP_W;
-    const y = (i / MAP_W) | 0;
+  let bx = -1, by = -1, best = Infinity;
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] !== TILE_GRASS || reserved[i] !== -1) continue;
+    const x = i % MAP_W, y = (i / MAP_W) | 0;
     let occupied = false;
-    for (let h = 0; h < houseCount; h++) {
-      if (houseX[h] === x && houseY[h] === y) { occupied = true; break; }
+    for (let h2 = 0; h2 < houseCount; h2++) {
+      if (houseX[h2] === x && houseY[h2] === y) { occupied = true; break; }
     }
     if (occupied) continue;
-    let score = 0;
-    for (let dy = -3; dy <= 3; dy++) {
-      for (let dx = -3; dx <= 3; dx++) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) continue;
-        const t = tiles[ny * MAP_W + nx];
-        if (t === 3) score += 3;      // рядом с полем
-        if (t === 1) score -= 2;      // не строим около воды
-      }
-    }
-    for (let h = 0; h < houseCount; h++) {
-      const dx = houseX[h] - x, dy = houseY[h] - y;
-      if (dx * dx + dy * dy < 25) score += 2; // возле других домов
-    }
-    if (score > bestScore) { bestScore = score; buildX = x; buildY = y; }
+    const d = (x - houseX[h]) ** 2 + (y - houseY[h]) ** 2;
+    if (d < best) { best = d; bx = x; by = y; }
   }
-  if (buildX < 0) return;  // негде строить
+  if (bx < 0) return;
 
-  // 5. Снимаем ресурс со склада и создаём дом
-  world.stockWood -= WOOD_COST;
+  buildX[id] = bx; buildY[id] = by;
+  reserved[by * MAP_W + bx] = id;
+  jobType[id] = 3;
+  workTimer[id] = TIME_BUILD;
+}
 
-  // запись в глобальные массивы дома
-  world.houseX[houseCount]        = buildX;
-  world.houseY[houseCount]        = buildY;
-  world.houseCapacity[houseCount] = 5;  // вмещает 5 поселенцев
-  world.houseOccupants[houseCount] = 0;
-
-  // обновляем счётчик домов
-  world.houseCount++;
+function stepToward(id, tx, ty, world) {
+  const { posX, posY, reserved, MAP_W } = world;
+  const dx = tx - posX[id];
+  const dy = ty - posY[id];
+  let nx = posX[id], ny = posY[id];
+  if (Math.abs(dx) > Math.abs(dy)) nx += Math.sign(dx);
+  else ny += Math.sign(dy);
+  const idx = ny * MAP_W + nx;
+  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
 }
