@@ -7,6 +7,8 @@ const TILE_WATER  = 1;
 const TILE_FOREST = 2;
 const TILE_FIELD  = 3;
 /* ------------------------------------------------------------------ */
+const TIME_HARVEST = 3;  // базовое время сбора пищи
+const TIME_CHOP    = 5;  // базовое время рубки дерева
 
 export function init () {
   /* ничего инициализировать не нужно */
@@ -19,13 +21,39 @@ export function update (id, dt, world) {
     // карта
     MAP_W, MAP_H, tiles,
     // ресурсы и популяция
-    stockFood, stockWood, agentCount,
+    stockFood, stockWood, agentCount, skillFood, skillWood, workTimer, jobType, homeId,
     // жилища
-  houseX, houseY, houseCount
+  houseX, houseY, houseCapacity, houseOccupants, houseCount, reserved
   } = world;
 
   // лёгкая усталость от времени
   energy[id] = Math.max(0, energy[id] - dt * 0.2);
+
+  // проверка дома
+  if (homeId[id] >= 0 && homeId[id] < houseCount) {
+    if (houseOccupants[homeId[id]] > houseCapacity[homeId[id]]) {
+      houseOccupants[homeId[id]]--;
+      homeId[id] = -1;
+    }
+  }
+  if (homeId[id] === -1) {
+    for (let h = 0; h < houseCount; h++) {
+      if (houseOccupants[h] < 2) {
+        homeId[id] = h;
+        houseOccupants[h]++;
+        break;
+      }
+    }
+  } else if (houseOccupants[homeId[id]] > 2) {
+    for (let h = 0; h < houseCount; h++) {
+      if (houseOccupants[h] < 2) {
+        houseOccupants[homeId[id]]--;
+        homeId[id] = h;
+        houseOccupants[h]++;
+        break;
+      }
+    }
+  }
 
   // отдых в доме при низкой энергии
   if (energy[id] < 20 && houseCount > 0) {
@@ -81,25 +109,40 @@ export function update (id, dt, world) {
   );
 
   /* ---------- 4. Навык и прибыль -------------------------------------- */
-  const skill = Math.max(0.2, Math.min(1, age[id] / 50)); // 0.2–1.0
-  const profitHarvest = foodPrice * skill;
-  const profitChop    = woodPrice * skill;
+  const harvestSpeed = 1 + skillFood[id] * 0.1;
+  const chopSpeed    = 1 + skillWood[id] * 0.1;
+  const harvestTime  = TIME_HARVEST / harvestSpeed;
+  const chopTime     = TIME_CHOP / chopSpeed;
+  const profitHarvest = foodPrice / harvestTime;
+  const profitChop    = woodPrice / chopTime;
 
   const harvestMode = profitHarvest >= profitChop;
   const targetType  = harvestMode ? TILE_FIELD : TILE_FOREST;
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
-  if (tiles[idx] === targetType) {
-    tiles[idx] = TILE_GRASS;
-    harvestMode ? world.stockFood++ : world.stockWood++;
+  if (workTimer[id] > 0) {
+    workTimer[id] -= dt;
+    if (workTimer[id] <= 0) {
+      tiles[idx] = TILE_GRASS;
+      if (jobType[id] === 1) { world.stockFood++; skillFood[id]++; }
+      if (jobType[id] === 2) { world.stockWood++; skillWood[id]++; }
+      if (reserved[idx] === id) reserved[idx] = -1;
+      jobType[id] = 0;
+    }
+    return;
+  }
+  if (tiles[idx] === targetType && reserved[idx] === -1) {
+    reserved[idx] = id;
+    jobType[id] = harvestMode ? 1 : 2;
+    workTimer[id] = harvestMode ? harvestTime : chopTime;
     return;
   }
 
   // ищем ближайший тайл цели
   let best = Infinity, tx = posX[id], ty = posY[id];
   for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] === targetType) {
+    if (tiles[i] === targetType && reserved[i] === -1) {
       const x = i % MAP_W, y = (i / MAP_W) | 0;
       const d = (x - posX[id]) ** 2 + (y - posY[id]) ** 2;
       if (d < best) { best = d; tx = x; ty = y; }
@@ -112,9 +155,12 @@ export function update (id, dt, world) {
 /* -------------------------------------------------------------------- */
 /*  Простая функция движения на один шаг в сторону цели                 */
 function stepToward (id, tx, ty, world) {
-  const { posX, posY } = world;
+  const { posX, posY, reserved } = world;
   const dx = tx - posX[id];
   const dy = ty - posY[id];
-  if (Math.abs(dx) > Math.abs(dy)) posX[id] += Math.sign(dx);
-  else                             posY[id] += Math.sign(dy);
+  let nx = posX[id], ny = posY[id];
+  if (Math.abs(dx) > Math.abs(dy)) nx += Math.sign(dx);
+  else                              ny += Math.sign(dy);
+  const idx = ny * world.MAP_W + nx;
+  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
 }
