@@ -125,8 +125,16 @@ export function update (id, dt, world) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
       tiles[idx] = TILE_GRASS;
-      if (jobType[id] === 1) { world.stockFood++; skillFood[id]++; }
-      if (jobType[id] === 2) { world.stockWood++; skillWood[id]++; }
+      if (jobType[id] === 1) {
+        world.stockFood++;
+        const cap = Math.min(20, Math.floor(age[id] / 3.5));
+        if (skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
+      }
+      if (jobType[id] === 2) {
+        world.stockWood++;
+        const cap = Math.min(20, Math.floor(age[id] / 3.5));
+        if (skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
+      }
       if (reserved[idx] === id) reserved[idx] = -1;
       jobType[id] = 0;
     }

@@ -31,13 +31,17 @@ export function update(id, dt, world) {
   const WOOD_COST = 15;
   if (stockWood < WOOD_COST) return;
 
-  // 4. Ищем первую свободную клетку травы (tiles[i] === 0)
+  // 4. Ищем первую свободную клетку травы (tiles[i] === 0) без дома
   let buildX = -1, buildY = -1;
   for (let i = 0; i < tiles.length; i++) {
     if (tiles[i] === 0) {
-      buildX = i % MAP_W;
-      buildY = (i / MAP_W) | 0;
-      break;
+      const x = i % MAP_W;
+      const y = (i / MAP_W) | 0;
+      let occupied = false;
+      for (let h = 0; h < houseCount; h++) {
+        if (houseX[h] === x && houseY[h] === y) { occupied = true; break; }
+      }
+      if (!occupied) { buildX = x; buildY = y; break; }
     }
   }
   if (buildX < 0) return;  // негде строить
