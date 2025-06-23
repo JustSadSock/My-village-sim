@@ -6,6 +6,7 @@ import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
 const MAP_W    = 64;
 const MAP_H    = 64;
 const MAP_SIZE = MAP_W * MAP_H;
+const AGE_SPEED = 1 / 60; // 1 year per 60 sec
 
 const TILE_GRASS  = 0;
 const TILE_WATER  = 1;
@@ -33,7 +34,7 @@ const reserved = new Int16Array(MAP_SIZE).fill(-1);
 const MAX_AGENTS = 200;
 const posX   = new Uint8Array(MAX_AGENTS);
 const posY   = new Uint8Array(MAX_AGENTS);
-const age    = new Uint8Array(MAX_AGENTS);
+const age    = new Float32Array(MAX_AGENTS);
 const hunger = new Float32Array(MAX_AGENTS);
 const thirst = new Float32Array(MAX_AGENTS);
 const energy = new Float32Array(MAX_AGENTS);
@@ -77,7 +78,7 @@ function spawnAgent(x, y) {
   const i = agentCount++;
   posX[i]   = x;
   posY[i]   = y;
-  age[i]    = Math.random() * 30 + 10 | 0;
+  age[i]    = Math.random() * 30 + 10;
   hunger[i] = thirst[i] = energy[i] = 100;
   role[i]   = 0;
   homeId[i] = -1;
@@ -107,12 +108,13 @@ function tick() {
 
   // 1. Биологические нужды
   for (let i = 0; i < agentCount; i++) {
-    hunger[i] = Math.max(0, hunger[i] - dt * 0.2);  // −0.2 ед/сек
+    hunger[i] = Math.max(0, hunger[i] - dt * 0.5);  // быстрее голодают
     thirst[i] = Math.max(0, thirst[i] - dt * 0.2);  // −0.2 ед/сек
     energy[i] = Math.min(100, energy[i] + dt * 0.5);// +0.5 ед/сек
+    age[i]   += dt * AGE_SPEED;
 
-    // смерть только от голода
-    if (hunger[i] === 0) {
+    // смерть от голода или старости
+    if (hunger[i] === 0 || age[i] > 70) {
       const lastId = --agentCount;
       if(homeId[i]>=0) houseOccupants[homeId[i]]--;
       posX[i]=posX[lastId]; posY[i]=posY[lastId];
@@ -169,7 +171,7 @@ function tick() {
       capacity: houseCapacity[i],
       occupants: houseOccupants[i]
     })),
-    stats: { pop: agentCount, food: _stockFood, wood: _stockWood },
+    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, houses: houseCount },
     fps: Math.round(1 / dt)
   });
 

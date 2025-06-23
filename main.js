@@ -4,16 +4,18 @@ const worker = new Worker('sim.worker.js', { type: 'module' });
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const hud = {
-  pop:  document.getElementById('pop'),
-  food: document.getElementById('food'),
-  wood: document.getElementById('wood'),
-  fps:  document.getElementById('fps'),
+  pop:    document.getElementById('pop'),
+  food:   document.getElementById('food'),
+  wood:   document.getElementById('wood'),
+  houses: document.getElementById('houses'),
+  fps:    document.getElementById('fps'),
 };
 const panel = document.getElementById('villagers');
+const detailsBtn = document.getElementById('details-btn');
 
 let mapW = 0, mapH = 0;
 let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [] }, houses = [];
-let stats = { pop: 0, food: 0, wood: 0 }, fps = 0;
+let stats = { pop: 0, food: 0, wood: 0, houses: 0 }, fps = 0;
 let lastTime = performance.now();
 // убираем смену дня и ночи
 
@@ -32,11 +34,13 @@ window.addEventListener('resize', resize);
 resize();
 
 // переключение панели с жителями
+function togglePanel() {
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
 window.addEventListener('keydown', e => {
-  if (e.key === 'v') {
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  }
+  if (e.key === 'v') togglePanel();
 });
+detailsBtn.addEventListener('click', togglePanel);
 
 // панорамирование
 let panX = 0, panY = 0, panning = false, startX = 0, startY = 0;
@@ -119,14 +123,15 @@ function render() {
 
   // обновляем HUD
   hud.pop.textContent  = `Pop:  ${stats.pop}`;
-  hud.food.textContent = `Food: ${stats.food}`;
-  hud.wood.textContent = `Wood: ${stats.wood}`;
-  hud.fps.textContent  = `FPS:  ${fps}`;
+  hud.food.textContent   = `Food: ${stats.food}`;
+  hud.wood.textContent   = `Wood: ${stats.wood}`;
+  hud.houses.textContent = `Houses: ${stats.houses}`;
+  hud.fps.textContent    = `FPS:  ${fps}`;
 
   if (panel.style.display !== 'none') {
-    let html = '';
+    let html = `<b>World</b> pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses}<br/><br/>`;
     for (let i = 0; i < agents.x.length; i++) {
-      html += `#${i} age:${agents.age[i]} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}<br/>`;
+      html += `#${i} age:${agents.age[i].toFixed(1)} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}<br/>`;
     }
     panel.innerHTML = html;
   }
