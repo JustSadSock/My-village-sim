@@ -9,9 +9,10 @@ const hud = {
   wood: document.getElementById('wood'),
   fps:  document.getElementById('fps'),
 };
+const panel = document.getElementById('villagers');
 
 let mapW = 0, mapH = 0;
-let tiles, agents = { x: [], y: [] }, houses = [];
+let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [] }, houses = [];
 let stats = { pop: 0, food: 0, wood: 0 }, fps = 0;
 let lastTime = performance.now();
 let dayTime  = 0;
@@ -29,6 +30,13 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 resize();
+
+// переключение панели с жителями
+window.addEventListener('keydown', e => {
+  if (e.key === 'v') {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+});
 
 // панорамирование
 let panX = 0, panY = 0, panning = false, startX = 0, startY = 0;
@@ -119,6 +127,14 @@ function render() {
   hud.food.textContent = `Food: ${stats.food}`;
   hud.wood.textContent = `Wood: ${stats.wood}`;
   hud.fps.textContent  = `FPS:  ${fps}`;
+
+  if (panel.style.display !== 'none') {
+    let html = '';
+    for (let i = 0; i < agents.x.length; i++) {
+      html += `#${i} age:${agents.age[i]} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}<br/>`;
+    }
+    panel.innerHTML = html;
+  }
 
   requestAnimationFrame(render);
 }

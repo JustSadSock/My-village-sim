@@ -27,6 +27,7 @@ function genMap() {
   }
 }
 genMap();
+const reserved = new Int16Array(MAP_SIZE).fill(-1);
 
 // ECS-массивы
 const MAX_AGENTS = 200;
@@ -36,6 +37,10 @@ const age    = new Uint8Array(MAX_AGENTS);
 const hunger = new Float32Array(MAX_AGENTS);
 const thirst = new Float32Array(MAX_AGENTS);
 const energy = new Float32Array(MAX_AGENTS);
+const homeId = new Int16Array(MAX_AGENTS);
+const skillFood = new Uint16Array(MAX_AGENTS);
+const skillWood = new Uint16Array(MAX_AGENTS);
+const workTimer = new Float32Array(MAX_AGENTS);
 const role   = new Uint8Array(MAX_AGENTS);
 let agentCount = 0;
 
@@ -53,8 +58,8 @@ let _stockWood = 100;
 
 // Мир для AI
 const world = {
-  MAP_W, MAP_H, tiles,
-  posX, posY, age, hunger, thirst, energy, role,
+  MAP_W, MAP_H, tiles, reserved,
+  posX, posY, age, hunger, thirst, energy, homeId, skillFood, skillWood, workTimer, jobType, role,
   houseX, houseY, houseCapacity, houseOccupants,
   get agentCount() { return agentCount; },
   set agentCount(v) { agentCount = v; },
@@ -74,6 +79,10 @@ function spawnAgent(x, y) {
   age[i]    = Math.random() * 30 + 10 | 0;
   hunger[i] = thirst[i] = energy[i] = 100;
   role[i]   = 0;
+  homeId[i] = -1;
+  skillFood[i]=0;
+  skillWood[i]=0;
+  workTimer[i]=0; jobType[i]=0;
 }
 for (let i = 0; i < 20; i++) {
   spawnAgent(
@@ -104,10 +113,12 @@ function tick() {
     // смерть только от голода
     if (hunger[i] === 0) {
       const lastId = --agentCount;
+      if(homeId[i]>=0) houseOccupants[homeId[i]]--;
       posX[i]=posX[lastId]; posY[i]=posY[lastId];
+      homeId[i]=homeId[lastId]; if(homeId[i]>=0) houseOccupants[homeId[i]]++;
       age[i]=age[lastId]; hunger[i]=hunger[lastId];
       thirst[i]=thirst[lastId]; energy[i]=energy[lastId];
-      role[i]=role[lastId];
+      skillFood[i]=skillFood[lastId]; skillWood[i]=skillWood[lastId]; workTimer[i]=workTimer[lastId]; jobType[i]=jobType[lastId]; role[i]=role[lastId];
       i--;
       continue;
     }
@@ -129,11 +140,28 @@ function tick() {
     updateBuilder(i, dt, world);
   }
 
+  // Размножение в домах
+  for (let h = 0; h < houseCount && agentCount < MAX_AGENTS; h++) {
+    if (houseOccupants[h] >= 2 && houseOccupants[h] < 5 && Math.random() < dt * 0.01) {
+      spawnAgent(houseX[h], houseY[h]);
+      homeId[agentCount - 1] = h;
+      houseOccupants[h]++;
+    }
+  }
+
   // 4. Формируем статистику и отправляем её в UI
   postMessage({
     type: 'update',
     tiles,
-    agents: { x: posX.slice(0, agentCount), y: posY.slice(0, agentCount) },
+    agents: {
+      x: posX.slice(0, agentCount),
+      y: posY.slice(0, agentCount),
+      age: age.slice(0, agentCount),
+      hunger: hunger.slice(0, agentCount),
+      home: homeId.slice(0, agentCount),
+      skillFood: skillFood.slice(0, agentCount),
+      skillWood: skillWood.slice(0, agentCount)
+    },
     houses: Array.from({ length: houseCount }, (_, i) => ({
       x: houseX[i],
       y: houseY[i],

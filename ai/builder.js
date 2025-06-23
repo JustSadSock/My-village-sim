@@ -11,17 +11,20 @@ export function update(id, dt, world) {
     tiles,
     stockWood,
     houseX, houseY, houseCapacity, houseOccupants,
+    homeId,
     agentCount, houseCount
   } = world;
 
-  // 1. Подсчёт общей вместимости жилья
-  let totalCap = 0;
+  // 1. Определяем, есть ли свободные дома
+  let hasFree = false, extras = 0, homeless = 0;
   for (let i = 0; i < houseCount; i++) {
-    totalCap += houseCapacity[i];
+    if (houseOccupants[i] < 2) hasFree = true;
+    if (houseOccupants[i] > 2) extras += houseOccupants[i] - 2;
   }
-
-  // 2. Если жилья хватает — ничего не делаем
-  const demand = agentCount - totalCap;
+  for (let i = 0; i < agentCount; i++) {
+    if (homeId[i] === -1) homeless++;
+  }
+  const demand = hasFree ? 0 : (homeless + extras);
   if (demand <= 0) return;
 
   // 3. Проверка ресурсов: на постройку нужно WOOD_COST бревен
@@ -45,7 +48,7 @@ export function update(id, dt, world) {
   // запись в глобальные массивы дома
   world.houseX[houseCount]        = buildX;
   world.houseY[houseCount]        = buildY;
-  world.houseCapacity[houseCount] = 4;  // вмещает 4 поселенца
+  world.houseCapacity[houseCount] = 5;  // вмещает 5 поселенцев
   world.houseOccupants[houseCount] = 0;
 
   // обновляем счётчик домов
