@@ -13,6 +13,8 @@ const hud = {
 let mapW = 0, mapH = 0;
 let tiles, agents = { x: [], y: [] }, houses = [];
 let stats = { pop: 0, food: 0, wood: 0 }, fps = 0;
+let lastTime = performance.now();
+let dayTime  = 0;
 
 // учёт DPR для чётких пикселей
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -61,6 +63,11 @@ worker.onmessage = e => {
 
 // рисование кадра
 function render() {
+  const now = performance.now();
+  const dt  = (now - lastTime) / 1000;
+  lastTime = now;
+  dayTime += dt * 0.1;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(panX, panY);
@@ -102,6 +109,10 @@ function render() {
   }
 
   ctx.restore();
+
+  const light = 0.6 + 0.4 * Math.sin(dayTime);
+  ctx.fillStyle = `rgba(0,0,0,${1 - light})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // обновляем HUD
   hud.pop.textContent  = `Pop:  ${stats.pop}`;

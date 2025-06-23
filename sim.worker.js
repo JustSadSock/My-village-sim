@@ -129,10 +129,23 @@ function tick() {
     updateBuilder(i, dt, world);
   }
 
-  // 4. Отправляем в UI
+  // 4. Формируем статистику и отправляем её в UI
   postMessage({
     type: 'update',
     tiles,
-    agents: { x: posX.slice(0,agentCount), y: posY.slice(0,agentCount) },
-    houses: Array.from({length:houseCount}, (_,i)=>({
-      x:houseX[i
+    agents: { x: posX.slice(0, agentCount), y: posY.slice(0, agentCount) },
+    houses: Array.from({ length: houseCount }, (_, i) => ({
+      x: houseX[i],
+      y: houseY[i],
+      capacity: houseCapacity[i],
+      occupants: houseOccupants[i]
+    })),
+    stats: { pop: agentCount, food: _stockFood, wood: _stockWood },
+    fps: Math.round(1 / dt)
+  });
+
+  setTimeout(tick, 1000 / 30);
+}
+
+// Стартуем
+tick();
