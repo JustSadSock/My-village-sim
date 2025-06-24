@@ -109,6 +109,13 @@ function stepToward(id, tx, ty, world) {
 }
 
 function takeWood(amount, world) {
+  if (world.storeCount === 0) {
+    if (world.stockWood >= amount) {
+      world.stockWood -= amount;
+      return true;
+    }
+    return false;
+  }
   for (let i = 0; i < world.storeCount && amount > 0; i++) {
     const w = Math.min(world.storeWood[i], amount);
     if (w > 0) {
