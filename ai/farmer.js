@@ -231,5 +231,5 @@ function stepToward (id, tx, ty, world) {
   nx = Math.max(0, Math.min(MAP_W - 1, nx));
   ny = Math.max(0, Math.min(MAP_H - 1, ny));
   const idx = ny * MAP_W + nx;
-  if (reserved[idx] === -1 || reserved[idx] === id) { posX[id] = nx; posY[id] = ny; }
+
 }
