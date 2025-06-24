@@ -83,6 +83,32 @@ export function update(id, dt, world) {
         world.houseCapacity[hc] = 5;
         world.houseOccupants[hc] = 0;
         world.houseCount = hc + 1;
+
+        if (world.storeCount < world.storeX.length) {
+          const dirs = [
+            [1, 0], [-1, 0], [0, 1], [0, -1]
+          ];
+          for (const [dx, dy] of dirs) {
+            const sx = buildX[id] + dx;
+            const sy = buildY[id] + dy;
+            if (sx < 0 || sx >= MAP_W || sy < 0 || sy >= MAP_H) continue;
+            if (tiles[sy * MAP_W + sx] !== TILE_GRASS) continue;
+            let occupied = false;
+            for (let h2 = 0; h2 < world.houseCount && !occupied; h2++) {
+              if (world.houseX[h2] === sx && world.houseY[h2] === sy) occupied = true;
+            }
+            for (let s2 = 0; s2 < world.storeCount && !occupied; s2++) {
+              if (world.storeX[s2] === sx && world.storeY[s2] === sy) occupied = true;
+            }
+            if (occupied) continue;
+            const sc = world.storeCount;
+            world.storeX[sc] = sx;
+            world.storeY[sc] = sy;
+            world.storeSize[sc] = 4;
+            world.storeCount = sc + 1;
+            break;
+          }
+        }
       } else {
         const sc = world.storeCount;
         world.storeX[sc] = buildX[id];

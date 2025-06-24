@@ -86,7 +86,7 @@ export function update (id, dt, world) {
   }
 
   /* ---------- Нести ресурсы на склад ------------------------------- */
-  if (carryFood[id] > 0 || carryWood[id] > 0) {
+  if (carryFood[id] >= 10 || carryWood[id] >= 10 || jobType[id] === 4 || jobType[id] === 5) {
     if (storeCount > 0) {
       let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
       for (let i = 0; i < storeCount; i++) {
@@ -184,18 +184,19 @@ export function update (id, dt, world) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
       tiles[idx] = TILE_GRASS;
-        if (jobType[id] === 1) {
-        carryFood[id] = Math.min(5, carryFood[id] + 1);
+      if (jobType[id] === 1) {
+        carryFood[id] = Math.min(10, carryFood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
+        jobType[id] = carryFood[id] >= 10 ? 4 : 0;
       }
-        if (jobType[id] === 2) {
-        carryWood[id] = Math.min(5, carryWood[id] + 1);
+      if (jobType[id] === 2) {
+        carryWood[id] = Math.min(10, carryWood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
+        jobType[id] = carryWood[id] >= 10 ? 5 : 0;
       }
       if (reserved[idx] === id) reserved[idx] = -1;
-      jobType[id] = jobType[id] === 1 ? 4 : 5;
     }
     return;
   }

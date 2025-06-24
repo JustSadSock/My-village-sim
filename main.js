@@ -43,12 +43,9 @@ function drawStore(x, y, ts) {
   ctx.fillStyle = '#777';
   ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.1, ts * 0.8, ts * 0.8);
   ctx.strokeStyle = '#fff';
-  ctx.beginPath();
-  ctx.moveTo(x * ts + ts * 0.3, y * ts + ts * 0.5);
-  ctx.lineTo(x * ts + ts * 0.7, y * ts + ts * 0.5);
-  ctx.moveTo(x * ts + ts * 0.5, y * ts + ts * 0.3);
-  ctx.lineTo(x * ts + ts * 0.5, y * ts + ts * 0.7);
-  ctx.stroke();
+  ctx.setLineDash([ts * 0.2, ts * 0.2]);
+  ctx.strokeRect(x * ts + ts * 0.1, y * ts + ts * 0.1, ts * 0.8, ts * 0.8);
+  ctx.setLineDash([]);
 }
 
 function drawVillager(x, y, ts, old) {
@@ -107,24 +104,42 @@ function showAgent(e) {
   for (let i = 0; i < agents.x.length; i++) {
     if (agents.x[i] === x && agents.y[i] === y) { idx = i; break; }
   }
-  if (idx === -1) {
-    agentInfo.style.display = 'none';
+  if (idx !== -1) {
+    agentInfo.style.display = 'block';
+    agentInfo.style.left = e.clientX + 10 + 'px';
+    agentInfo.style.top  = e.clientY + 10 + 'px';
+    const jobMap = {
+      0: 'idle',
+      1: 'harvest',
+      2: 'chop',
+      3: 'build',
+      4: 'store food',
+      5: 'store wood',
+      6: 'build store'
+    };
+    const job = jobMap[agents.job[idx]] || 'unknown';
+    agentInfo.innerHTML = `age:${agents.age[idx].toFixed(0)}<br/>hunger:${agents.hunger[idx].toFixed(0)}<br/>task:${job}`;
     return;
   }
-  agentInfo.style.display = 'block';
-  agentInfo.style.left = e.clientX + 10 + 'px';
-  agentInfo.style.top  = e.clientY + 10 + 'px';
-  const jobMap = {
-    0: 'idle',
-    1: 'harvest',
-    2: 'chop',
-    3: 'build',
-    4: 'store food',
-    5: 'store wood',
-    6: 'build store'
-  };
-  const job = jobMap[agents.job[idx]] || 'unknown';
-  agentInfo.innerHTML = `age:${agents.age[idx].toFixed(0)}<br/>hunger:${agents.hunger[idx].toFixed(0)}<br/>task:${job}`;
+  for (let i = 0; i < houses.length; i++) {
+    if (houses[i].x === x && houses[i].y === y) {
+      agentInfo.style.display = 'block';
+      agentInfo.style.left = e.clientX + 10 + 'px';
+      agentInfo.style.top  = e.clientY + 10 + 'px';
+      agentInfo.innerHTML = `house ${i}<br/>cap:${houses[i].capacity} occ:${houses[i].occupants}`;
+      return;
+    }
+  }
+  for (let i = 0; i < stores.length; i++) {
+    if (stores[i].x === x && stores[i].y === y) {
+      agentInfo.style.display = 'block';
+      agentInfo.style.left = e.clientX + 10 + 'px';
+      agentInfo.style.top  = e.clientY + 10 + 'px';
+      agentInfo.innerHTML = `store ${i}<br/>food:${stores[i].food} wood:${stores[i].wood}`;
+      return;
+    }
+  }
+  agentInfo.style.display = 'none';
 }
 canvas.addEventListener('pointerdown', e => {
   panning = true;
