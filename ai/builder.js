@@ -18,8 +18,13 @@ export function update(id, dt, world) {
 
   if (age[id] < 16) return;
   const h = homeId[id];
-  if (h < 0 || h >= houseCount) return;
-  if (houseOccupants[h] <= 2) return;
+  let needBuild = false;
+  if (houseCount === 0 || h < 0 || h >= houseCount) {
+    needBuild = true;
+  } else if (houseOccupants[h] > 2) {
+    needBuild = true;
+  }
+  if (!needBuild) return;
 
   if (jobType[id] === 3) {
     if (posX[id] === buildX[id] && posY[id] === buildY[id]) {
@@ -47,6 +52,17 @@ export function update(id, dt, world) {
   if (stockWood < WOOD_COST) return;
 
   let bx = -1, by = -1, best = Infinity;
+  let refX = posX[id], refY = posY[id];
+  if (h >= 0 && h < houseCount) {
+    refX = houseX[h];
+    refY = houseY[h];
+  } else if (houseCount > 0) {
+    let dist = Infinity;
+    for (let i = 0; i < houseCount; i++) {
+      const d = (houseX[i] - posX[id]) ** 2 + (houseY[i] - posY[id]) ** 2;
+      if (d < dist) { dist = d; refX = houseX[i]; refY = houseY[i]; }
+    }
+  }
   for (let i = 0; i < tiles.length; i++) {
     if (tiles[i] !== TILE_GRASS || reserved[i] !== -1) continue;
     const x = i % MAP_W, y = (i / MAP_W) | 0;
@@ -55,7 +71,7 @@ export function update(id, dt, world) {
       if (houseX[h2] === x && houseY[h2] === y) { occupied = true; break; }
     }
     if (occupied) continue;
-    const d = (x - houseX[h]) ** 2 + (y - houseY[h]) ** 2;
+    const d = (x - refX) ** 2 + (y - refY) ** 2;
     if (d < best) { best = d; bx = x; by = y; }
   }
   if (bx < 0) return;

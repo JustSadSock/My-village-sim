@@ -123,8 +123,8 @@ function updatePrices(dt) {
   const baseWood = 0.5;
   const targetFood = baseFood * agentCount / Math.max(_stockFood, 1);
   const targetWood = baseWood * agentCount / Math.max(_stockWood, 1);
-  _priceFood += (_priceFood ? (targetFood - _priceFood) : targetFood) * 0.1 * dt;
-  _priceWood += (_priceWood ? (targetWood - _priceWood) : targetWood) * 0.1 * dt;
+  _priceFood += (_priceFood ? (targetFood - _priceFood) : targetFood) * dt;
+  _priceWood += (_priceWood ? (targetWood - _priceWood) : targetWood) * dt;
   if (Math.random() < dt * 0.1) {
     _priceFood *= 1 + (Math.random() - 0.5) * 0.02;
     _priceWood *= 1 + (Math.random() - 0.5) * 0.02;
