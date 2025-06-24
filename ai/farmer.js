@@ -88,27 +88,26 @@ export function update (id, dt, world) {
   /* ---------- Нести ресурсы на склад ------------------------------- */
   if (carryFood[id] > 0 || carryWood[id] > 0) {
     if (storeCount > 0) {
-      let best = Infinity, tx = posX[id], ty = posY[id];
+      let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
       for (let i = 0; i < storeCount; i++) {
         const x = storeX[i], y = storeY[i];
         const d = (x - posX[id]) ** 2 + (y - posY[id]) ** 2;
-        if (d < best) { best = d; tx = x; ty = y; }
+        if (d < best) { best = d; tx = x; ty = y; si = i; }
       }
       if (posX[id] === tx && posY[id] === ty) {
-        let cap = 0;
-        for (let j = 0; j < storeCount; j++) cap += storeSize[j] * 100;
-        const total = world.stockFood + world.stockWood;
-        if (total < cap) {
-          if (carryFood[id] > 0) { world.stockFood += carryFood[id]; carryFood[id]=0; }
-          if (carryWood[id] > 0) { world.stockWood += carryWood[id]; carryWood[id]=0; }
+        if (si >= 0) {
+          world.deposit(si, carryFood[id], carryWood[id]);
+          carryFood[id] = 0;
+          carryWood[id] = 0;
         }
         jobType[id] = 0;
       } else {
         stepToward(id, tx, ty, world);
       }
     } else {
-      if (carryFood[id] > 0) { world.stockFood += carryFood[id]; carryFood[id]=0; }
-      if (carryWood[id] > 0) { world.stockWood += carryWood[id]; carryWood[id]=0; }
+      world.stockFood += carryFood[id];
+      world.stockWood += carryWood[id];
+      carryFood[id] = carryWood[id] = 0;
       jobType[id] = 0;
     }
     return;
@@ -136,10 +135,30 @@ export function update (id, dt, world) {
 
   /* ---------- 2. Еда --------------------------------------------------- */
   if (hunger[id] < 30 && world.stockFood > 0) {
-    world.stockFood--;                // съели единицу еды
-    const restore = 15 + Math.random() * 15;
-    hunger[id] = Math.min(100, hunger[id] + restore);
-    return;
+    let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
+    for (let i = 0; i < storeCount; i++) {
+      if (world.storeFood[i] > 0) {
+        const x = storeX[i], y = storeY[i];
+        const d = (x - posX[id]) ** 2 + (y - posY[id]) ** 2;
+        if (d < best) { best = d; tx = x; ty = y; si = i; }
+      }
+    }
+    if (si >= 0) {
+      if (posX[id] === tx && posY[id] === ty) {
+        if (world.withdraw(si, 1, 0)) {
+          const restore = 15 + Math.random() * 15;
+          hunger[id] = Math.min(100, hunger[id] + restore);
+        }
+      } else {
+        stepToward(id, tx, ty, world);
+      }
+      return;
+    } else {
+      world.stockFood--;
+      const restore = 15 + Math.random() * 15;
+      hunger[id] = Math.min(100, hunger[id] + restore);
+      return;
+    }
   }
 
   /* ---------- 3. Экономика ресурсов ----------------------------------- */
@@ -165,13 +184,13 @@ export function update (id, dt, world) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
       tiles[idx] = TILE_GRASS;
-      if (jobType[id] === 1) {
-        carryFood[id] = 1;
+        if (jobType[id] === 1) {
+        carryFood[id] = Math.min(5, carryFood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
       }
-      if (jobType[id] === 2) {
-        carryWood[id] = 1;
+        if (jobType[id] === 2) {
+        carryWood[id] = Math.min(5, carryWood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
       }

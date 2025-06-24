@@ -72,6 +72,8 @@ const MAX_STORES = 10;
 const storeX     = new Uint8Array(MAX_STORES);
 const storeY     = new Uint8Array(MAX_STORES);
 const storeSize  = new Uint8Array(MAX_STORES);
+const storeFood  = new Uint16Array(MAX_STORES);
+const storeWood  = new Uint16Array(MAX_STORES);
 let storeCount = 0;
 
 const carryFood  = new Uint8Array(MAX_AGENTS);
@@ -89,7 +91,7 @@ const world = {
   posX, posY, age, hunger, thirst, energy, homeId, skillFood, skillWood, workTimer, jobType, role,
   buildX, buildY,
   houseX, houseY, houseCapacity, houseOccupants,
-  storeX, storeY, storeSize,
+  storeX, storeY, storeSize, storeFood, storeWood,
   get agentCount() { return agentCount; },
   set agentCount(v) { agentCount = v; },
   get houseCount() { return houseCount; },
@@ -104,7 +106,37 @@ const world = {
   get priceFood() { return _priceFood; },
   set priceFood(v) { _priceFood = v; },
   get priceWood() { return _priceWood; },
-  set priceWood(v) { _priceWood = v; }
+  set priceWood(v) { _priceWood = v; },
+  deposit(storeIndex, food = 0, wood = 0) {
+    if (storeIndex < 0 || storeIndex >= storeCount) return 0;
+    const cap = storeSize[storeIndex] * 100;
+    const used = storeFood[storeIndex] + storeWood[storeIndex];
+    let free = cap - used;
+    let deposited = 0;
+    if (food > 0 && free > 0) {
+      const df = Math.min(food, free);
+      storeFood[storeIndex] += df;
+      _stockFood += df;
+      free -= df;
+      deposited += df;
+    }
+    if (wood > 0 && free > 0) {
+      const dw = Math.min(wood, free);
+      storeWood[storeIndex] += dw;
+      _stockWood += dw;
+      deposited += dw;
+    }
+    return deposited;
+  },
+  withdraw(storeIndex, food = 0, wood = 0) {
+    if (storeIndex < 0 || storeIndex >= storeCount) return false;
+    if (food > storeFood[storeIndex] || wood > storeWood[storeIndex]) return false;
+    storeFood[storeIndex] -= food;
+    storeWood[storeIndex] -= wood;
+    _stockFood -= food;
+    _stockWood -= wood;
+    return true;
+  }
 };
 
 // Спавн крестьян

@@ -12,7 +12,7 @@ export function init() {}
 export function update(id, dt, world) {
   const {
     age, posX, posY, homeId,
-    houseX, houseY, houseOccupants, houseCount,
+    houseX, houseY, houseCapacity, houseOccupants, houseCount,
     MAP_W, MAP_H, tiles, reserved,
     stockWood, workTimer, jobType,
     buildX, buildY,
@@ -34,16 +34,14 @@ export function update(id, dt, world) {
     if (posX[id] === buildX[id] && posY[id] === buildY[id]) {
       workTimer[id] -= dt;
       if (workTimer[id] <= 0) {
-        if (jobType[id] === 3 && stockWood >= WOOD_COST) {
-          world.stockWood -= WOOD_COST;
+        if (jobType[id] === 3 && stockWood >= WOOD_COST && takeWood(WOOD_COST, world)) {
           const hc = world.houseCount;
           world.houseX[hc] = buildX[id];
           world.houseY[hc] = buildY[id];
           world.houseCapacity[hc] = 5;
           world.houseOccupants[hc] = 0;
           world.houseCount = hc + 1;
-        } else if (jobType[id] === 6 && stockWood >= STORE_WOOD) {
-          world.stockWood -= STORE_WOOD;
+        } else if (jobType[id] === 6 && stockWood >= STORE_WOOD && takeWood(STORE_WOOD, world)) {
           const sc = world.storeCount;
           world.storeX[sc] = buildX[id];
           world.storeY[sc] = buildY[id];
@@ -106,4 +104,19 @@ function stepToward(id, tx, ty, world) {
   else ny += Math.sign(dy);
   const idx = ny * MAP_W + nx;
   if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
+}
+
+function takeWood(amount, world) {
+  for (let i = 0; i < world.storeCount && amount > 0; i++) {
+    const w = Math.min(world.storeWood[i], amount);
+    if (w > 0) {
+      world.withdraw(i, 0, w);
+      amount -= w;
+    }
+  }
+  if (amount > 0 && world.stockWood >= amount) {
+    world.stockWood -= amount;
+    amount = 0;
+  }
+  return amount === 0;
 }
