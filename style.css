@@ -73,3 +73,10 @@
   padding: 4px 6px;
   border-radius: 4px;
 }
+
+#agent-info {
+  left: 0;
+  top: 0;
+  right: auto;
+  pointer-events: none;
+}

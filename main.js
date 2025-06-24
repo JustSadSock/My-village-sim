@@ -13,12 +13,14 @@ const hud = {
   fps:    document.getElementById('fps'),
 };
 const panel = document.getElementById('villagers');
+const agentInfo = document.getElementById('agent-info');
 const detailsBtn = document.getElementById('details-btn');
 const speedControls = document.getElementById('speed-controls');
 
 let mapW = 0, mapH = 0;
-let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [] }, houses = [];
-let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0 }, fps = 0;
+let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [], job: [] },
+    houses = [], stores = [];
+let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0, stores: 0 }, fps = 0;
 let lastTime = performance.now();
 // убираем смену дня и ночи
 
@@ -53,19 +55,55 @@ if (speedControls) {
 
 // панорамирование
 let panX = 0, panY = 0, panning = false, startX = 0, startY = 0;
+
+function showAgent(e) {
+  if (!mapW || !mapH) return;
+  const ts = Math.floor(Math.min(
+    window.innerWidth / mapW,
+    window.innerHeight / mapH
+  ));
+  const x = Math.floor((e.clientX - panX) / ts);
+  const y = Math.floor((e.clientY - panY) / ts);
+  let idx = -1;
+  for (let i = 0; i < agents.x.length; i++) {
+    if (agents.x[i] === x && agents.y[i] === y) { idx = i; break; }
+  }
+  if (idx === -1) {
+    agentInfo.style.display = 'none';
+    return;
+  }
+  agentInfo.style.display = 'block';
+  agentInfo.style.left = e.clientX + 10 + 'px';
+  agentInfo.style.top  = e.clientY + 10 + 'px';
+  const jobMap = {
+    0: 'idle',
+    1: 'harvest',
+    2: 'chop',
+    3: 'build',
+    4: 'store food',
+    5: 'store wood',
+    6: 'build store'
+  };
+  const job = jobMap[agents.job[idx]] || 'unknown';
+  agentInfo.innerHTML = `age:${agents.age[idx].toFixed(0)}<br/>hunger:${agents.hunger[idx].toFixed(0)}<br/>task:${job}`;
+}
 canvas.addEventListener('pointerdown', e => {
   panning = true;
   startX = e.clientX; startY = e.clientY;
+  showAgent(e);
 });
 canvas.addEventListener('pointermove', e => {
   if (panning) {
     panX += e.clientX - startX;
     panY += e.clientY - startY;
     startX = e.clientX; startY = e.clientY;
+  } else {
+    showAgent(e);
   }
 });
 canvas.addEventListener('pointerup',   () => panning = false);
 canvas.addEventListener('pointercancel',() => panning = false);
+canvas.addEventListener('pointerleave', () => agentInfo.style.display = 'none');
 
 // обработка сообщений от симуляции
 worker.onmessage = e => {
@@ -77,6 +115,7 @@ worker.onmessage = e => {
     tiles    = msg.tiles;
     agents   = msg.agents;
     houses   = msg.houses;
+    stores   = msg.stores || [];
     stats    = msg.stats;
     fps      = msg.fps;
   }
@@ -117,6 +156,12 @@ function render() {
       ctx.fillRect(h.x * ts, h.y * ts, ts, ts);
     });
 
+    // склады
+    stores.forEach(s => {
+      ctx.fillStyle = '#555';
+      ctx.fillRect(s.x * ts, s.y * ts, ts, ts);
+    });
+
     // поселенцы
     for (let i = 0; i < agents.x.length; i++) {
       ctx.fillStyle = agents.age[i] > 50 ? '#ccc' : '#eee';
@@ -136,11 +181,11 @@ function render() {
   hud.wood.textContent   = `Wood: ${stats.wood}`;
   hud.priceFood.textContent = `F$ ${stats.priceFood.toFixed(2)}`;
   hud.priceWood.textContent = `W$ ${stats.priceWood.toFixed(2)}`;
-  hud.houses.textContent = `Houses: ${stats.houses}`;
+  hud.houses.textContent = `Houses: ${stats.houses} S:${stats.stores}`;
   hud.fps.textContent    = `FPS:  ${fps}`;
 
   if (panel.style.display !== 'none') {
-    let html = `<b>World</b> pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses}<br/>` +
+    let html = `<b>World</b> pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses} stores:${stats.stores}<br/>` +
                `priceF:${stats.priceFood.toFixed(2)} priceW:${stats.priceWood.toFixed(2)}<br/><br/>`;
     for (let i = 0; i < agents.x.length; i++) {
       html += `#${i} age:${agents.age[i].toFixed(1)} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}<br/>`;
