@@ -105,10 +105,17 @@ function stepToward(id, tx, ty, world) {
   nx = Math.max(0, Math.min(MAP_W - 1, nx));
   ny = Math.max(0, Math.min(MAP_H - 1, ny));
   const idx = ny * MAP_W + nx;
-  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
+  if (reserved[idx] === -1 || reserved[idx] === id) { posX[id] = nx; posY[id] = ny; }
 }
 
 function takeWood(amount, world) {
+  if (world.storeCount === 0) {
+    if (world.stockWood >= amount) {
+      world.stockWood -= amount;
+      return true;
+    }
+    return false;
+  }
   for (let i = 0; i < world.storeCount && amount > 0; i++) {
     const w = Math.min(world.storeWood[i], amount);
     if (w > 0) {

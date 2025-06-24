@@ -153,6 +153,11 @@ export function update (id, dt, world) {
         stepToward(id, tx, ty, world);
       }
       return;
+    } else {
+      world.stockFood--;
+      const restore = 15 + Math.random() * 15;
+      hunger[id] = Math.min(100, hunger[id] + restore);
+      return;
     }
   }
 
@@ -226,5 +231,5 @@ function stepToward (id, tx, ty, world) {
   nx = Math.max(0, Math.min(MAP_W - 1, nx));
   ny = Math.max(0, Math.min(MAP_H - 1, ny));
   const idx = ny * MAP_W + nx;
-  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
+
 }
