@@ -83,7 +83,7 @@ const carryWood  = new Uint8Array(MAX_AGENTS);
 let _stockFood = 50;
 let _stockWood = 100;
 let _priceFood = 1;
-let _priceWood = 0.5;
+let _priceWood = 1;
 
 // Мир для AI
 const world = {
@@ -166,18 +166,17 @@ initFarmer(world);
 initBuilder(world);
 
 function updatePrices(dt) {
-  const baseFood = 1;
-  const baseWood = 0.5;
-  const targetFood = baseFood * agentCount / Math.max(_stockFood, 1);
-  const targetWood = baseWood * agentCount / Math.max(_stockWood, 1);
-  _priceFood += (_priceFood ? (targetFood - _priceFood) : targetFood) * dt;
-  _priceWood += (_priceWood ? (targetWood - _priceWood) : targetWood) * dt;
-  if (Math.random() < dt * 0.1) {
-    _priceFood *= 1 + (Math.random() - 0.5) * 0.02;
-    _priceWood *= 1 + (Math.random() - 0.5) * 0.02;
+  const base = 1;
+  const targetFood = base * agentCount / Math.max(_stockFood, 1);
+  const targetWood = base * agentCount / Math.max(_stockWood, 1);
+  _priceFood += (targetFood - _priceFood) * dt * 3;
+  _priceWood += (targetWood - _priceWood) * dt * 3;
+  if (Math.random() < dt * 0.2) {
+    _priceFood *= 1 + (Math.random() - 0.5) * 0.2;
+    _priceWood *= 1 + (Math.random() - 0.5) * 0.2;
   }
-  _priceFood = Math.min(Math.max(_priceFood, 0.5), 8);
-  _priceWood = Math.min(Math.max(_priceWood, 0.3), 6);
+  _priceFood = Math.min(Math.max(_priceFood, 0.0001), 1000);
+  _priceWood = Math.min(Math.max(_priceWood, 0.0001), 1000);
 }
 
 // Начальная передача карты
@@ -276,7 +275,9 @@ function tick() {
     stores: Array.from({ length: storeCount }, (_, i) => ({
       x: storeX[i],
       y: storeY[i],
-      size: storeSize[i]
+      size: storeSize[i],
+      food: storeFood[i],
+      wood: storeWood[i]
     })),
     stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount },
     fps: Math.round(1 / dt)
