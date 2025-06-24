@@ -41,15 +41,15 @@ export function update (id, dt, world) {
   }
   if (homeId[id] === -1) {
     for (let h = 0; h < houseCount; h++) {
-      if (houseOccupants[h] < 2) {
+      if (houseOccupants[h] < houseCapacity[h]) {
         homeId[id] = h;
         houseOccupants[h]++;
         break;
       }
     }
-  } else if (houseOccupants[homeId[id]] > 2) {
+  } else if (houseOccupants[homeId[id]] > houseCapacity[homeId[id]]) {
     for (let h = 0; h < houseCount; h++) {
-      if (houseOccupants[h] < 2) {
+      if (houseOccupants[h] < houseCapacity[h]) {
         houseOccupants[homeId[id]]--;
         homeId[id] = h;
         houseOccupants[h]++;
