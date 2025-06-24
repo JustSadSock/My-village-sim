@@ -183,12 +183,12 @@ function tick() {
     }
   }
 
-  // 2. Реген поля и леса (слабенький шанс)
+  // 2. Реген поля и леса (шанс зависит от скорости)
   for (let i = 0; i < MAP_SIZE; i++) {
-    if (tiles[i] === TILE_GRASS && Math.random() < 0.0005) {
+    if (tiles[i] === TILE_GRASS && Math.random() < 0.0005 * dt) {
       tiles[i] = TILE_FIELD;
     }
-    if (tiles[i] === TILE_GRASS && Math.random() < 0.0003) {
+    if (tiles[i] === TILE_GRASS && Math.random() < 0.0003 * dt) {
       tiles[i] = TILE_FOREST;
     }
   }
