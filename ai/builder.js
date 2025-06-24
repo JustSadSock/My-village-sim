@@ -31,25 +31,24 @@ export function update(id, dt, world) {
   const MAX_ACTIVE_BUILDERS = 2;
   if (active >= MAX_ACTIVE_BUILDERS && jobType[id] === 0) return;
 
-  // подсчёт требуемого числа домов: 1 дом на 5 жителей
-  const requiredHouses = Math.ceil(agentCount / 5);
-  let needBuild = houseCount < requiredHouses;
-  if (!needBuild) {
-    if (h < 0 || h >= houseCount) {
-      // у жителя нет дома, проверяем есть ли свободное жильё
-      let free = false;
-      for (let i = 0; i < houseCount; i++) {
-        if (houseOccupants[i] < houseCapacity[i]) { free = true; break; }
-      }
-      needBuild = !free;
-    } else if (houseOccupants[h] >= houseCapacity[h]) {
-      // дом переполнен, ищем свободное место
-      let free = false;
-      for (let i = 0; i < houseCount; i++) {
-        if (houseOccupants[i] < houseCapacity[i]) { free = true; break; }
-      }
-      needBuild = !free && houseCount < requiredHouses;
+  // строительство новых домов при нехватке жилья
+  const DESIRED = 2;
+  let needBuild = false;
+
+  if (h < 0 || h >= houseCount) {
+    // у жителя нет дома, проверяем есть ли жильё с менее чем двумя жителями
+    let free = false;
+    for (let i = 0; i < houseCount; i++) {
+      if (houseOccupants[i] < DESIRED) { free = true; break; }
     }
+    needBuild = !free;
+  } else if (houseOccupants[h] > DESIRED) {
+    // дом переполнен относительно желаемого числа жителей
+    let free = false;
+    for (let i = 0; i < houseCount; i++) {
+      if (houseOccupants[i] < DESIRED) { free = true; break; }
+    }
+    needBuild = !free;
   }
   const needStore = Math.floor(houseCount / 10) > storeCount;
   if (!needBuild && !needStore) return;

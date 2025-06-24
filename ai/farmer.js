@@ -33,24 +33,31 @@ export function update (id, dt, world) {
   energy[id] = Math.max(0, energy[id] - dt * 0.2);
 
   // проверка дома
+  const DESIRED = 2; // желаемое число жителей в доме
   if (homeId[id] >= 0 && homeId[id] < houseCount) {
     if (houseOccupants[homeId[id]] > houseCapacity[homeId[id]]) {
       houseOccupants[homeId[id]]--;
       homeId[id] = -1;
     }
   }
-  if (homeId[id] === -1) {
-    for (let h = 0; h < houseCount; h++) {
-      if (houseOccupants[h] < houseCapacity[h]) {
-        homeId[id] = h;
-        houseOccupants[h]++;
-        break;
+
+  // переселение при переполнении относительно желаемого числа жителей
+  if (homeId[id] >= 0 && homeId[id] < houseCount) {
+    if (houseOccupants[homeId[id]] > DESIRED) {
+      for (let h = 0; h < houseCount; h++) {
+        if (houseOccupants[h] < DESIRED) {
+          houseOccupants[homeId[id]]--;
+          homeId[id] = h;
+          houseOccupants[h]++;
+          break;
+        }
       }
     }
-  } else if (houseOccupants[homeId[id]] > houseCapacity[homeId[id]]) {
+  }
+
+  if (homeId[id] === -1) {
     for (let h = 0; h < houseCount; h++) {
-      if (houseOccupants[h] < houseCapacity[h]) {
-        houseOccupants[homeId[id]]--;
+      if (houseOccupants[h] < DESIRED) {
         homeId[id] = h;
         houseOccupants[h]++;
         break;
