@@ -67,6 +67,16 @@ const houseCapacity  = new Uint8Array(MAX_HOUSES);
 const houseOccupants = new Uint8Array(MAX_HOUSES);
 let houseCount = 0;
 
+// Склады
+const MAX_STORES = 10;
+const storeX     = new Uint8Array(MAX_STORES);
+const storeY     = new Uint8Array(MAX_STORES);
+const storeSize  = new Uint8Array(MAX_STORES);
+let storeCount = 0;
+
+const carryFood  = new Uint8Array(MAX_AGENTS);
+const carryWood  = new Uint8Array(MAX_AGENTS);
+
 // Ресурсы
 let _stockFood = 50;
 let _stockWood = 100;
@@ -79,14 +89,18 @@ const world = {
   posX, posY, age, hunger, thirst, energy, homeId, skillFood, skillWood, workTimer, jobType, role,
   buildX, buildY,
   houseX, houseY, houseCapacity, houseOccupants,
+  storeX, storeY, storeSize,
   get agentCount() { return agentCount; },
   set agentCount(v) { agentCount = v; },
   get houseCount() { return houseCount; },
   set houseCount(v) { houseCount = v; },
+  get storeCount() { return storeCount; },
+  set storeCount(v) { storeCount = v; },
   get stockFood() { return _stockFood; },
   set stockFood(v) { _stockFood = v; },
   get stockWood() { return _stockWood; },
   set stockWood(v) { _stockWood = v; },
+  carryFood, carryWood,
   get priceFood() { return _priceFood; },
   set priceFood(v) { _priceFood = v; },
   get priceWood() { return _priceWood; },
@@ -106,6 +120,7 @@ function spawnAgent(x, y, a = Math.random() * 30 + 10) {
   skillWood[i]=0;
   workTimer[i]=0; jobType[i]=0;
   buildX[i] = -1; buildY[i] = -1;
+  carryFood[i]=0; carryWood[i]=0;
 }
 for (let i = 0; i < 20; i++) {
   spawnAgent(
@@ -212,7 +227,8 @@ function tick() {
       hunger: hunger.slice(0, agentCount),
       home: homeId.slice(0, agentCount),
       skillFood: skillFood.slice(0, agentCount),
-      skillWood: skillWood.slice(0, agentCount)
+      skillWood: skillWood.slice(0, agentCount),
+      job: jobType.slice(0, agentCount)
     },
     houses: Array.from({ length: houseCount }, (_, i) => ({
       x: houseX[i],
@@ -220,7 +236,12 @@ function tick() {
       capacity: houseCapacity[i],
       occupants: houseOccupants[i]
     })),
-    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount },
+    stores: Array.from({ length: storeCount }, (_, i) => ({
+      x: storeX[i],
+      y: storeY[i],
+      size: storeSize[i]
+    })),
+    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount },
     fps: Math.round(1 / dt)
   });
 

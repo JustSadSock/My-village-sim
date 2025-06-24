@@ -22,8 +22,11 @@ export function update (id, dt, world) {
     MAP_W, MAP_H, tiles,
     // ресурсы и популяция
     stockFood, stockWood, agentCount, skillFood, skillWood, workTimer, jobType, homeId,
-    // жилища
-  houseX, houseY, houseCapacity, houseOccupants, houseCount, reserved
+    carryFood, carryWood,
+    // жилища и склады
+    houseX, houseY, houseCapacity, houseOccupants, houseCount,
+    storeX, storeY, storeSize, storeCount,
+    reserved
   } = world;
 
   // лёгкая усталость от времени
@@ -82,6 +85,35 @@ export function update (id, dt, world) {
     return;
   }
 
+  /* ---------- Нести ресурсы на склад ------------------------------- */
+  if (carryFood[id] > 0 || carryWood[id] > 0) {
+    if (storeCount > 0) {
+      let best = Infinity, tx = posX[id], ty = posY[id];
+      for (let i = 0; i < storeCount; i++) {
+        const x = storeX[i], y = storeY[i];
+        const d = (x - posX[id]) ** 2 + (y - posY[id]) ** 2;
+        if (d < best) { best = d; tx = x; ty = y; }
+      }
+      if (posX[id] === tx && posY[id] === ty) {
+        let cap = 0;
+        for (let j = 0; j < storeCount; j++) cap += storeSize[j] * 100;
+        const total = stockFood + stockWood;
+        if (total < cap) {
+          if (carryFood[id] > 0) { stockFood += carryFood[id]; carryFood[id]=0; }
+          if (carryWood[id] > 0) { stockWood += carryWood[id]; carryWood[id]=0; }
+        }
+        jobType[id] = 0;
+      } else {
+        stepToward(id, tx, ty, world);
+      }
+    } else {
+      if (carryFood[id] > 0) { stockFood += carryFood[id]; carryFood[id]=0; }
+      if (carryWood[id] > 0) { stockWood += carryWood[id]; carryWood[id]=0; }
+      jobType[id] = 0;
+    }
+    return;
+  }
+
   /* ---------- 1. Питьё ------------------------------------------------ */
   if (thirst[id] < 30) {
     const idx = posY[id] * MAP_W + posX[id];
@@ -122,7 +154,8 @@ export function update (id, dt, world) {
   const profitHarvest = foodPrice / harvestTime;
   const profitChop    = woodPrice / chopTime;
 
-  const harvestMode = profitHarvest >= profitChop;
+  let harvestMode = profitHarvest >= profitChop;
+  if (hunger[id] < 30 && stockFood === 0) harvestMode = true;
   const targetType  = harvestMode ? TILE_FIELD : TILE_FOREST;
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
@@ -133,17 +166,17 @@ export function update (id, dt, world) {
     if (workTimer[id] <= 0) {
       tiles[idx] = TILE_GRASS;
       if (jobType[id] === 1) {
-        world.stockFood++;
+        carryFood[id] = 1;
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
       }
       if (jobType[id] === 2) {
-        world.stockWood++;
+        carryWood[id] = 1;
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
       }
       if (reserved[idx] === id) reserved[idx] = -1;
-      jobType[id] = 0;
+      jobType[id] = jobType[id] === 1 ? 4 : 5;
     }
     return;
   }
