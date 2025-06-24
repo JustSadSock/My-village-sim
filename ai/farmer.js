@@ -179,7 +179,7 @@ export function update (id, dt, world) {
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
-  if (jobType[id] === 3) return;
+  if (jobType[id] === 3 || jobType[id] === 6) return;
   if (workTimer[id] > 0) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
