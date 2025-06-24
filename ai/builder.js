@@ -125,3 +125,18 @@ function takeWood(amount, world) {
   }
   return amount === 0;
 }
+
+function takeWood(amount, world) {
+  for (let i = 0; i < world.storeCount && amount > 0; i++) {
+    const w = Math.min(world.storeWood[i], amount);
+    if (w > 0) {
+      world.withdraw(i, 0, w);
+      amount -= w;
+    }
+  }
+  if (amount > 0 && world.stockWood >= amount) {
+    world.stockWood -= amount;
+    amount = 0;
+  }
+  return amount === 0;
+}

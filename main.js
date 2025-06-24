@@ -142,17 +142,17 @@ function render() {
       for (let x = 0; x < mapW; x++) {
         const t = tiles[y * mapW + x];
         // 0 = grass, 1 = water, 2 = forest, 3 = field
-        if (t === 1) ctx.fillStyle = (x + y) % 2 ? '#28f' : '#39f';
-        else if (t === 2) ctx.fillStyle = (x + y) % 2 ? '#2a2' : '#1f2';
-        else if (t === 3) ctx.fillStyle = (x + y) % 2 ? '#ca5' : '#db6';
-        else ctx.fillStyle = (x + y) % 2 ? '#3c3' : '#4d4';
+        if (t === 1) ctx.fillStyle = '#30a9de';
+        else if (t === 2) ctx.fillStyle = '#26734d';
+        else if (t === 3) ctx.fillStyle = '#d4a76a';
+        else ctx.fillStyle = '#3da66e';
         ctx.fillRect(x * ts, y * ts, ts, ts);
       }
     }
 
     // дома
     houses.forEach(h => {
-      ctx.fillStyle = (h.x + h.y) % 2 ? '#a52' : '#b63';
+      ctx.fillStyle = '#b85c2e';
       ctx.fillRect(h.x * ts, h.y * ts, ts, ts);
     });
 
