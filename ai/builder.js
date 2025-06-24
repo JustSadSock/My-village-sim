@@ -24,7 +24,7 @@ export function update(id, dt, world) {
   let needBuild = false;
   if (houseCount === 0 || h < 0 || h >= houseCount) {
     needBuild = true;
-  } else if (houseOccupants[h] > 2) {
+  } else if (houseOccupants[h] >= houseCapacity[h]) {
     needBuild = true;
   }
   const needStore = Math.floor(houseCount / 10) > storeCount;

@@ -183,6 +183,11 @@ function tick() {
     }
   }
 
+  // очищаем устаревшие бронировки плиток после смерти жителей
+  for (let i = 0; i < reserved.length; i++) {
+    if (reserved[i] >= agentCount) reserved[i] = -1;
+  }
+
   // 2. Реген поля и леса (шанс зависит от скорости)
   for (let i = 0; i < MAP_SIZE; i++) {
     if (tiles[i] === TILE_GRASS && Math.random() < 0.0005 * dt) {
