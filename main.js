@@ -18,6 +18,45 @@ const detailsBtn = document.getElementById('details-btn');
 const speedControls = document.getElementById('speed-controls');
 
 let mapW = 0, mapH = 0;
+
+// более мягкие цвета тайлов и простые функции рисования
+const TILE_COLORS = {
+  grass:  '#3b963b',
+  water:  '#3093ff',
+  forest: '#2e7b2e',
+  field:  '#cfa447'
+};
+
+function drawHouse(x, y, ts) {
+  ctx.fillStyle = '#b57a40';
+  ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.4, ts * 0.8, ts * 0.6);
+  ctx.fillStyle = '#8a4a2f';
+  ctx.beginPath();
+  ctx.moveTo(x * ts + ts * 0.05, y * ts + ts * 0.4);
+  ctx.lineTo(x * ts + ts / 2, y * ts + ts * 0.05);
+  ctx.lineTo(x * ts + ts * 0.95, y * ts + ts * 0.4);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawStore(x, y, ts) {
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.1, ts * 0.8, ts * 0.8);
+  ctx.strokeStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(x * ts + ts * 0.3, y * ts + ts * 0.5);
+  ctx.lineTo(x * ts + ts * 0.7, y * ts + ts * 0.5);
+  ctx.moveTo(x * ts + ts * 0.5, y * ts + ts * 0.3);
+  ctx.lineTo(x * ts + ts * 0.5, y * ts + ts * 0.7);
+  ctx.stroke();
+}
+
+function drawVillager(x, y, ts, old) {
+  ctx.fillStyle = old ? '#ccc' : '#eee';
+  ctx.beginPath();
+  ctx.arc(x * ts + ts / 2, y * ts + ts / 2, ts * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+}
 let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [], job: [] },
     houses = [], stores = [];
 let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0, stores: 0 }, fps = 0;
@@ -142,34 +181,27 @@ function render() {
       for (let x = 0; x < mapW; x++) {
         const t = tiles[y * mapW + x];
         // 0 = grass, 1 = water, 2 = forest, 3 = field
-        if (t === 1) ctx.fillStyle = (x + y) % 2 ? '#28f' : '#39f';
-        else if (t === 2) ctx.fillStyle = (x + y) % 2 ? '#2a2' : '#1f2';
-        else if (t === 3) ctx.fillStyle = (x + y) % 2 ? '#ca5' : '#db6';
-        else ctx.fillStyle = (x + y) % 2 ? '#3c3' : '#4d4';
+        if (t === 1) ctx.fillStyle = TILE_COLORS.water;
+        else if (t === 2) ctx.fillStyle = TILE_COLORS.forest;
+        else if (t === 3) ctx.fillStyle = TILE_COLORS.field;
+        else ctx.fillStyle = TILE_COLORS.grass;
         ctx.fillRect(x * ts, y * ts, ts, ts);
       }
     }
 
     // дома
     houses.forEach(h => {
-      ctx.fillStyle = (h.x + h.y) % 2 ? '#a52' : '#b63';
-      ctx.fillRect(h.x * ts, h.y * ts, ts, ts);
+      drawHouse(h.x, h.y, ts);
     });
 
     // склады
     stores.forEach(s => {
-      ctx.fillStyle = '#555';
-      ctx.fillRect(s.x * ts, s.y * ts, ts, ts);
+      drawStore(s.x, s.y, ts);
     });
 
     // поселенцы
     for (let i = 0; i < agents.x.length; i++) {
-      ctx.fillStyle = agents.age[i] > 50 ? '#ccc' : '#eee';
-      ctx.fillRect(
-        agents.x[i] * ts,
-        agents.y[i] * ts,
-        ts, ts
-      );
+      drawVillager(agents.x[i], agents.y[i], ts, agents.age[i] > 50);
     }
   }
 
