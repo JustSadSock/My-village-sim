@@ -96,14 +96,16 @@ export function update(id, dt, world) {
 }
 
 function stepToward(id, tx, ty, world) {
-  const { posX, posY, reserved, MAP_W } = world;
+  const { posX, posY, reserved, MAP_W, MAP_H } = world;
   const dx = tx - posX[id];
   const dy = ty - posY[id];
   let nx = posX[id], ny = posY[id];
   if (Math.abs(dx) > Math.abs(dy)) nx += Math.sign(dx);
   else ny += Math.sign(dy);
+  nx = Math.max(0, Math.min(MAP_W - 1, nx));
+  ny = Math.max(0, Math.min(MAP_H - 1, ny));
   const idx = ny * MAP_W + nx;
-  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
+  if (reserved[idx] === -1 || reserved[idx] === id) { posX[id] = nx; posY[id] = ny; }
 }
 
 function takeWood(amount, world) {
