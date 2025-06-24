@@ -30,30 +30,45 @@ export function update(id, dt, world) {
   const needStore = Math.floor(houseCount / 10) > storeCount;
   if (!needBuild && !needStore) return;
 
+  if (jobType[id] !== 0 && jobType[id] !== 3 && jobType[id] !== 6) return;
+
   if (jobType[id] === 3 || jobType[id] === 6) {
-    if (posX[id] === buildX[id] && posY[id] === buildY[id]) {
-      workTimer[id] -= dt;
-      if (workTimer[id] <= 0) {
-        if (jobType[id] === 3 && stockWood >= WOOD_COST && takeWood(WOOD_COST, world)) {
-          const hc = world.houseCount;
-          world.houseX[hc] = buildX[id];
-          world.houseY[hc] = buildY[id];
-          world.houseCapacity[hc] = 5;
-          world.houseOccupants[hc] = 0;
-          world.houseCount = hc + 1;
-        } else if (jobType[id] === 6 && stockWood >= STORE_WOOD && takeWood(STORE_WOOD, world)) {
-          const sc = world.storeCount;
-          world.storeX[sc] = buildX[id];
-          world.storeY[sc] = buildY[id];
-          world.storeSize[sc] = 4;
-          world.storeCount = sc + 1;
-        }
+    if (posX[id] !== buildX[id] || posY[id] !== buildY[id]) {
+      stepToward(id, buildX[id], buildY[id], world);
+      return;
+    }
+
+    // На месте строительства
+    if (workTimer[id] === 0) {
+      const cost = jobType[id] === 3 ? WOOD_COST : STORE_WOOD;
+      if (!takeWood(cost, world)) {
         reserved[buildY[id] * MAP_W + buildX[id]] = -1;
         jobType[id] = 0;
-        buildX[id] = -1; buildY[id] = -1;
+        buildX[id] = buildY[id] = -1;
+        return;
       }
-    } else {
-      stepToward(id, buildX[id], buildY[id], world);
+      workTimer[id] = jobType[id] === 3 ? TIME_BUILD : TIME_STORE;
+    }
+
+    workTimer[id] -= dt;
+    if (workTimer[id] <= 0) {
+      if (jobType[id] === 3) {
+        const hc = world.houseCount;
+        world.houseX[hc] = buildX[id];
+        world.houseY[hc] = buildY[id];
+        world.houseCapacity[hc] = 5;
+        world.houseOccupants[hc] = 0;
+        world.houseCount = hc + 1;
+      } else {
+        const sc = world.storeCount;
+        world.storeX[sc] = buildX[id];
+        world.storeY[sc] = buildY[id];
+        world.storeSize[sc] = 4;
+        world.storeCount = sc + 1;
+      }
+      reserved[buildY[id] * MAP_W + buildX[id]] = -1;
+      jobType[id] = 0;
+      buildX[id] = buildY[id] = -1;
     }
     return;
   }
@@ -96,17 +111,26 @@ export function update(id, dt, world) {
 }
 
 function stepToward(id, tx, ty, world) {
-  const { posX, posY, reserved, MAP_W } = world;
+  const { posX, posY, reserved, MAP_W, MAP_H } = world;
   const dx = tx - posX[id];
   const dy = ty - posY[id];
   let nx = posX[id], ny = posY[id];
   if (Math.abs(dx) > Math.abs(dy)) nx += Math.sign(dx);
   else ny += Math.sign(dy);
-  const idx = ny * MAP_W + nx;
-  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
+  nx = Math.max(0, Math.min(MAP_W - 1, nx));
+  ny = Math.max(0, Math.min(MAP_H - 1, ny));
+  posX[id] = nx;
+  posY[id] = ny;
 }
 
 function takeWood(amount, world) {
+  if (world.storeCount === 0) {
+    if (world.stockWood >= amount) {
+      world.stockWood -= amount;
+      return true;
+    }
+    return false;
+  }
   for (let i = 0; i < world.storeCount && amount > 0; i++) {
     const w = Math.min(world.storeWood[i], amount);
     if (w > 0) {

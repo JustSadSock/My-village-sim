@@ -153,6 +153,11 @@ export function update (id, dt, world) {
         stepToward(id, tx, ty, world);
       }
       return;
+    } else {
+      world.stockFood--;
+      const restore = 15 + Math.random() * 15;
+      hunger[id] = Math.min(100, hunger[id] + restore);
+      return;
     }
   }
 
@@ -174,7 +179,7 @@ export function update (id, dt, world) {
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
-  if (jobType[id] === 3) return;
+  if (jobType[id] === 3 || jobType[id] === 6) return;
   if (workTimer[id] > 0) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
@@ -217,12 +222,14 @@ export function update (id, dt, world) {
 /* -------------------------------------------------------------------- */
 /*  Простая функция движения на один шаг в сторону цели                 */
 function stepToward (id, tx, ty, world) {
-  const { posX, posY, reserved } = world;
+  const { posX, posY, reserved, MAP_W, MAP_H } = world;
   const dx = tx - posX[id];
   const dy = ty - posY[id];
   let nx = posX[id], ny = posY[id];
   if (Math.abs(dx) > Math.abs(dy)) nx += Math.sign(dx);
   else                              ny += Math.sign(dy);
-  const idx = ny * world.MAP_W + nx;
-  if (reserved[idx] === -1) { posX[id] = nx; posY[id] = ny; }
+  nx = Math.max(0, Math.min(MAP_W - 1, nx));
+  ny = Math.max(0, Math.min(MAP_H - 1, ny));
+  posX[id] = nx;
+  posY[id] = ny;
 }
