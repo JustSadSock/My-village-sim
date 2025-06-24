@@ -105,7 +105,8 @@ export function update (id, dt, world) {
   /* ---------- 2. Еда --------------------------------------------------- */
   if (hunger[id] < 30 && stockFood > 0) {
     world.stockFood--;                // съели единицу еды
-    hunger[id] = 100;
+    const restore = 15 + Math.random() * 15;
+    hunger[id] = Math.min(100, hunger[id] + restore);
     return;
   }
 
