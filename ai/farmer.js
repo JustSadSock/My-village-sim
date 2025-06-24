@@ -179,7 +179,7 @@ export function update (id, dt, world) {
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
-  if (jobType[id] === 3) return;
+  if (jobType[id] === 3 || jobType[id] === 6) return;
   if (workTimer[id] > 0) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
@@ -230,6 +230,5 @@ function stepToward (id, tx, ty, world) {
   else                              ny += Math.sign(dy);
   nx = Math.max(0, Math.min(MAP_W - 1, nx));
   ny = Math.max(0, Math.min(MAP_H - 1, ny));
-  const idx = ny * MAP_W + nx;
-
+<
 }
