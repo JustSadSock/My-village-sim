@@ -119,6 +119,8 @@ function stepToward(id, tx, ty, world) {
   else ny += Math.sign(dy);
   nx = Math.max(0, Math.min(MAP_W - 1, nx));
   ny = Math.max(0, Math.min(MAP_H - 1, ny));
+  posX[id] = nx;
+  posY[id] = ny;
 
 }
 
