@@ -50,11 +50,7 @@ export function update(id, dt, world) {
     }
     needBuild = !free;
   }
-  const needStore = Math.floor(houseCount / 10) > storeCount;
-  if (!needBuild && !needStore) return;
-
-  if (jobType[id] !== 0 && jobType[id] !== 3 && jobType[id] !== 6) return;
-
+  // продолжить уже начатое строительство независимо от потребностей
   if (jobType[id] === 3 || jobType[id] === 6) {
     if (posX[id] !== buildX[id] || posY[id] !== buildY[id]) {
       stepToward(id, buildX[id], buildY[id], world);
@@ -121,6 +117,11 @@ export function update(id, dt, world) {
     }
     return;
   }
+
+  const needStore = Math.floor(houseCount / 10) > storeCount;
+  if (!needBuild && !needStore) return;
+
+  if (jobType[id] !== 0) return;
 
   const buildStore = needStore && stockWood >= STORE_WOOD;
   if (!buildStore && stockWood < WOOD_COST) return;
