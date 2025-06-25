@@ -296,6 +296,9 @@ function tick() {
       age[i]=age[lastId]; hunger[i]=hunger[lastId];
       thirst[i]=thirst[lastId]; energy[i]=energy[lastId];
       skillFood[i]=skillFood[lastId]; skillWood[i]=skillWood[lastId]; workTimer[i]=workTimer[lastId]; jobType[i]=jobType[lastId]; role[i]=role[lastId];
+      buildX[i]=buildX[lastId]; buildY[i]=buildY[lastId];
+      carryFood[i]=carryFood[lastId]; carryWood[i]=carryWood[lastId];
+      for (let r = 0; r < reserved.length; r++) if (reserved[r] === i) reserved[r] = -1;
       i--;
       continue;
     }
