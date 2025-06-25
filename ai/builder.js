@@ -1,6 +1,12 @@
 // ai/builder.js — поселенцы строят дома при нехватке жилья
 
 import { TILE_GRASS, TILE_FIELD } from '../data/constants.js';
+import {
+  JOB_IDLE,
+  JOB_BUILD,
+  JOB_BUILD_STORE,
+  JOB_FARM
+} from '../data/jobTypes.js';
 
 const TIME_BUILD = 8;            // время постройки
 const WOOD_COST  = 15;
@@ -59,10 +65,10 @@ export function update(id, dt, world) {
   // ограничение числа одновременно строящих
   let active = 0;
   for (let i = 0; i < agentCount; i++) {
-    if (jobType[i] === 3 || jobType[i] === 6 || jobType[i] === 7) active++;
+    if (jobType[i] === JOB_BUILD || jobType[i] === JOB_BUILD_STORE || jobType[i] === JOB_FARM) active++;
   }
   const MAX_ACTIVE_BUILDERS = 2;
-  if (active >= MAX_ACTIVE_BUILDERS && jobType[id] === 0) return;
+  if (active >= MAX_ACTIVE_BUILDERS && jobType[id] === JOB_IDLE) return;
 
   // строительство новых домов при нехватке жилья
   const DESIRED = 2;
@@ -84,7 +90,7 @@ export function update(id, dt, world) {
     needBuild = !free;
   }
   // продолжить уже начатое строительство независимо от потребностей
-  if (jobType[id] === 3 || jobType[id] === 6 || jobType[id] === 7) {
+  if (jobType[id] === JOB_BUILD || jobType[id] === JOB_BUILD_STORE || jobType[id] === JOB_FARM) {
     if (posX[id] !== buildX[id] || posY[id] !== buildY[id]) {
       stepToward(id, buildX[id], buildY[id], world);
       return;
@@ -92,18 +98,18 @@ export function update(id, dt, world) {
 
     // На месте строительства
     if (workTimer[id] === 0) {
-      if (jobType[id] === 3) {
+      if (jobType[id] === JOB_BUILD) {
         if (!takeWood(WOOD_COST, world)) {
           reserved[buildY[id] * MAP_W + buildX[id]] = -1;
-          jobType[id] = 0;
+          jobType[id] = JOB_IDLE;
           buildX[id] = buildY[id] = -1;
           return;
         }
         workTimer[id] = TIME_BUILD;
-      } else if (jobType[id] === 6) {
+      } else if (jobType[id] === JOB_BUILD_STORE) {
         if (!takeWood(STORE_WOOD, world)) {
           reserved[buildY[id] * MAP_W + buildX[id]] = -1;
-          jobType[id] = 0;
+          jobType[id] = JOB_IDLE;
           buildX[id] = buildY[id] = -1;
           return;
         }
@@ -115,7 +121,7 @@ export function update(id, dt, world) {
 
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
-      if (jobType[id] === 3) {
+      if (jobType[id] === JOB_BUILD) {
         const hc = world.houseCount;
         world.houseX[hc] = buildX[id];
         world.houseY[hc] = buildY[id];
@@ -148,7 +154,7 @@ export function update(id, dt, world) {
             break;
           }
         }
-      } else if (jobType[id] === 6) {
+      } else if (jobType[id] === JOB_BUILD_STORE) {
         const sc = world.storeCount;
         world.storeX[sc] = buildX[id];
         world.storeY[sc] = buildY[id];
@@ -158,7 +164,7 @@ export function update(id, dt, world) {
         tiles[buildY[id] * MAP_W + buildX[id]] = TILE_FIELD;
       }
       reserved[buildY[id] * MAP_W + buildX[id]] = -1;
-      jobType[id] = 0;
+      jobType[id] = JOB_IDLE;
       buildX[id] = buildY[id] = -1;
     }
     return;
@@ -170,7 +176,7 @@ export function update(id, dt, world) {
   const needFarm  = fields < houseCount * 2;
   if (!needBuild && !needStore && !needFarm) return;
 
-  if (jobType[id] !== 0) return;
+  if (jobType[id] !== JOB_IDLE) return;
 
   const buildStore = needStore && stockWood >= STORE_WOOD;
   if (!buildStore && !needFarm && stockWood < WOOD_COST) return;
@@ -206,13 +212,13 @@ export function update(id, dt, world) {
   buildX[id] = bx; buildY[id] = by;
   reserved[by * MAP_W + bx] = id;
   if (buildStore) {
-    jobType[id] = 6;
+    jobType[id] = JOB_BUILD_STORE;
     workTimer[id] = TIME_STORE;
   } else if (needBuild) {
-    jobType[id] = 3;
+    jobType[id] = JOB_BUILD;
     workTimer[id] = TIME_BUILD;
   } else {
-    jobType[id] = 7;
+    jobType[id] = JOB_FARM;
     workTimer[id] = TIME_FARM;
   }
 }
