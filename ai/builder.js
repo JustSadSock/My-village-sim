@@ -189,5 +189,9 @@ function takeWood(amount, world) {
       amount -= w;
     }
   }
+  if (amount > 0 && world.stockWood >= amount) {
+    world.stockWood -= amount;
+    amount = 0;
+  }
   return amount === 0;
 }
