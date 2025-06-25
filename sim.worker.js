@@ -196,6 +196,29 @@ for (let i = 0; i < 20; i++) {
   );
 }
 
+function placeBuilding(type, x, y) {
+  if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return;
+  for (let i = 0; i < houseCount; i++) if (houseX[i] === x && houseY[i] === y) return;
+  for (let i = 0; i < storeCount; i++) if (storeX[i] === x && storeY[i] === y) return;
+  if (tiles[y * MAP_W + x] !== TILE_GRASS) return;
+  if (type === 'house' && _stockWood >= 15 && houseCount < MAX_HOUSES) {
+    houseX[houseCount] = x;
+    houseY[houseCount] = y;
+    houseCapacity[houseCount] = 5;
+    houseOccupants[houseCount] = 0;
+    houseCount++;
+    _stockWood -= 15;
+  } else if (type === 'store' && _stockWood >= 20 && storeCount < MAX_STORES) {
+    storeX[storeCount] = x;
+    storeY[storeCount] = y;
+    storeSize[storeCount] = 4;
+    storeFood[storeCount] = 0;
+    storeWood[storeCount] = 0;
+    storeCount++;
+    _stockWood -= 20;
+  }
+}
+
 // Инициализируем AI
 initFarmer(world);
 initBuilder(world);
@@ -237,6 +260,9 @@ let last = performance.now();
 let gameSpeed = 1;
 self.onmessage = e => {
   if (e.data && e.data.type === 'speed') gameSpeed = e.data.value;
+  if (e.data && e.data.type === 'place') {
+    placeBuilding(e.data.what, e.data.x, e.data.y);
+  }
 };
 function tick() {
   recordStats();
