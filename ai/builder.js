@@ -14,17 +14,44 @@ export function init() {}
 
 export function update(id, dt, world) {
   const {
-    age, posX, posY, homeId,
+    age, posX, posY, homeId, hunger,
     houseX, houseY, houseCapacity, houseOccupants, houseCount,
     MAP_W, MAP_H, tiles, reserved,
-    stockWood, workTimer, jobType,
+    stockWood, stockFood, workTimer, jobType,
     buildX, buildY,
-    storeX, storeY, storeSize, storeCount,
-    agentCount
+    storeX, storeY, storeSize, storeCount, storeFood,
+    agentCount, withdraw
   } = world;
 
   if (age[id] < 16) return;
   const h = homeId[id];
+
+  if (hunger[id] < 30 && stockFood > 0) {
+    let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
+    for (let i = 0; i < storeCount; i++) {
+      if (storeFood[i] > 0) {
+        const x = storeX[i], y = storeY[i];
+        const d = (x - posX[id]) ** 2 + (y - posY[id]) ** 2;
+        if (d < best) { best = d; tx = x; ty = y; si = i; }
+      }
+    }
+    if (si >= 0) {
+      if (posX[id] === tx && posY[id] === ty) {
+        if (withdraw(si, 1, 0)) {
+          const restore = 15 + Math.random() * 15;
+          hunger[id] = Math.min(100, hunger[id] + restore);
+        }
+      } else {
+        stepToward(id, tx, ty, world);
+      }
+      return;
+    } else {
+      world.stockFood--;
+      const restore = 15 + Math.random() * 15;
+      hunger[id] = Math.min(100, hunger[id] + restore);
+      return;
+    }
+  }
 
   // ограничение числа одновременно строящих
   let active = 0;
