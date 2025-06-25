@@ -13,6 +13,15 @@ const MAP_SIZE = MAP_W * MAP_H;
 const AGE_SPEED = 1 / 60;
 const HUNGER_RATE = 100 / 60; // 100 hunger per year
 
+// Sliding window for production/consumption statistics
+const STATS_TICKS = 60;
+const foodInHist  = new Float32Array(STATS_TICKS).fill(0);
+const foodOutHist = new Float32Array(STATS_TICKS).fill(0);
+const woodInHist  = new Float32Array(STATS_TICKS).fill(0);
+const woodOutHist = new Float32Array(STATS_TICKS).fill(0);
+let statsIdx = 0;
+let tickFoodIn = 0, tickFoodOut = 0, tickWoodIn = 0, tickWoodOut = 0;
+
 
 // Карта
 const tiles = new Uint8Array(MAP_SIZE);
@@ -110,9 +119,17 @@ const world = {
   get storeCount() { return storeCount; },
   set storeCount(v) { storeCount = v; },
   get stockFood() { return _stockFood; },
-  set stockFood(v) { _stockFood = v; },
+  set stockFood(v) {
+    if (v > _stockFood) tickFoodIn += v - _stockFood;
+    else if (v < _stockFood) tickFoodOut += _stockFood - v;
+    _stockFood = v;
+  },
   get stockWood() { return _stockWood; },
-  set stockWood(v) { _stockWood = v; },
+  set stockWood(v) {
+    if (v > _stockWood) tickWoodIn += v - _stockWood;
+    else if (v < _stockWood) tickWoodOut += _stockWood - v;
+    _stockWood = v;
+  },
   carryFood, carryWood,
   get priceFood() { return _priceFood; },
   set priceFood(v) { _priceFood = v; },
@@ -128,6 +145,7 @@ const world = {
       const df = Math.min(food, free);
       storeFood[storeIndex] += df;
       _stockFood += df;
+      tickFoodIn += df;
       free -= df;
       deposited += df;
     }
@@ -135,6 +153,7 @@ const world = {
       const dw = Math.min(wood, free);
       storeWood[storeIndex] += dw;
       _stockWood += dw;
+      tickWoodIn += dw;
       deposited += dw;
     }
     return deposited;
@@ -146,6 +165,8 @@ const world = {
     storeWood[storeIndex] -= wood;
     _stockFood -= food;
     _stockWood -= wood;
+    tickFoodOut += food;
+    tickWoodOut += wood;
     return true;
   }
 };
@@ -180,9 +201,16 @@ initFarmer(world);
 initBuilder(world);
 
 function updatePrices(dt) {
-  const base = 1;
-  const targetFood = base * agentCount / Math.max(_stockFood, 1);
-  const targetWood = base * agentCount / Math.max(_stockWood, 1);
+  const supplyFood = foodInHist.reduce((a, b) => a + b, 0);
+  const demandFood = foodOutHist.reduce((a, b) => a + b, 0);
+  const supplyWood = woodInHist.reduce((a, b) => a + b, 0);
+  const demandWood = woodOutHist.reduce((a, b) => a + b, 0);
+
+  const ratioFood = (demandFood + 0.1) / (supplyFood + 0.1);
+  const ratioWood = (demandWood + 0.1) / (supplyWood + 0.1);
+  const targetFood = ratioFood * agentCount / Math.max(_stockFood, 1);
+  const targetWood = ratioWood * agentCount / Math.max(_stockWood, 1);
+
   _priceFood += (targetFood - _priceFood) * dt * 3;
   _priceWood += (targetWood - _priceWood) * dt * 3;
   if (Math.random() < dt * 0.2) {
@@ -191,6 +219,15 @@ function updatePrices(dt) {
   }
   _priceFood = Math.min(Math.max(_priceFood, 0.0001), 1000);
   _priceWood = Math.min(Math.max(_priceWood, 0.0001), 1000);
+}
+
+function recordStats() {
+  foodInHist[statsIdx] = tickFoodIn;
+  foodOutHist[statsIdx] = tickFoodOut;
+  woodInHist[statsIdx] = tickWoodIn;
+  woodOutHist[statsIdx] = tickWoodOut;
+  statsIdx = (statsIdx + 1) % STATS_TICKS;
+  tickFoodIn = tickFoodOut = tickWoodIn = tickWoodOut = 0;
 }
 
 // Начальная передача карты
@@ -202,6 +239,7 @@ self.onmessage = e => {
   if (e.data && e.data.type === 'speed') gameSpeed = e.data.value;
 };
 function tick() {
+  recordStats();
   const now = performance.now();
   const dt  = (now - last) / 1000 * gameSpeed;
   last = now;
