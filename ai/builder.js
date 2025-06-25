@@ -26,11 +26,27 @@ export function update(id, dt, world) {
     stockWood, stockFood, workTimer, jobType,
     buildX, buildY,
     storeX, storeY, storeSize, storeCount, storeFood,
-    agentCount, withdraw
+    agentCount, withdraw,
+    carryFood, role
   } = world;
 
   // дети также могут пользоваться складом и строить
   const h = homeId[id];
+
+  // перекусить из собственных запасов, если других источников нет
+  if (hunger[id] < 30 && carryFood[id] > 0) {
+    const take = Math.min(carryFood[id], 5);
+    carryFood[id] -= take;
+    const restore = (15 + Math.random() * 15) * take;
+    hunger[id] = Math.min(100, hunger[id] + restore);
+    return;
+  }
+
+  // при нехватке еды бездействующий строитель переключается на фермерские работы
+  if (stockFood < agentCount && jobType[id] === JOB_IDLE) {
+    role[id] = 0; // стать фермером
+    return;
+  }
 
   if (hunger[id] < 30 && stockFood > 0) {
     let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
