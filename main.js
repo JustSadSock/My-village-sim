@@ -18,8 +18,12 @@ const panel = document.getElementById('villagers');
 const agentInfo = document.getElementById('agent-info');
 const detailsBtn = document.getElementById('details-btn');
 const speedControls = document.getElementById('speed-controls');
+const buildControls = document.getElementById('build-controls');
 
 let mapW = 0, mapH = 0;
+
+let animTimer = 0;
+let zoom = 1;
 
 // более мягкие цвета тайлов и простые функции рисования
 const TILE_COLORS = {
@@ -58,7 +62,8 @@ function drawCorpse(x, y, ts) {
 }
 
 function drawVillager(x, y, ts, old) {
-  ctx.fillStyle = old ? '#ccc' : '#eee';
+  const shade = animTimer % 1 < 0.5 ? 238 : 220;
+  ctx.fillStyle = old ? '#ccc' : `rgb(${shade},${shade},${shade})`;
   ctx.beginPath();
   ctx.arc(x * ts + ts / 2, y * ts + ts / 2, ts * 0.4, 0, Math.PI * 2);
   ctx.fill();
@@ -97,16 +102,28 @@ if (speedControls) {
     if (v !== null) worker.postMessage({type:'speed', value: Number(v)});
   });
 }
+if (buildControls) {
+  buildControls.addEventListener('click', e => {
+    const mode = e.target.getAttribute('data-build');
+    if (mode) buildMode = mode;
+  });
+}
 
 // панорамирование
 let panX = 0, panY = 0, panning = false, startX = 0, startY = 0;
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  zoom = Math.min(Math.max(0.5, zoom * factor), 4);
+});
+let buildMode = null;
 
 function showAgent(e) {
   if (!mapW || !mapH) return;
   const ts = Math.floor(Math.min(
     window.innerWidth / mapW,
     window.innerHeight / mapH
-  ));
+  ) * zoom);
   const x = Math.floor((e.clientX - panX) / ts);
   const y = Math.floor((e.clientY - panY) / ts);
   let idx = -1;
@@ -151,6 +168,17 @@ function showAgent(e) {
   agentInfo.style.display = 'none';
 }
 canvas.addEventListener('pointerdown', e => {
+  const ts = Math.floor(Math.min(
+    window.innerWidth / mapW,
+    window.innerHeight / mapH
+  ) * zoom);
+  if (buildMode) {
+    const x = Math.floor((e.clientX - panX) / ts);
+    const y = Math.floor((e.clientY - panY) / ts);
+    worker.postMessage({type:'place', what: buildMode, x, y});
+    buildMode = null;
+    return;
+  }
   panning = true;
   startX = e.clientX; startY = e.clientY;
   showAgent(e);
@@ -190,17 +218,20 @@ function render() {
   const now = performance.now();
   const dt  = (now - lastTime) / 1000;
   lastTime = now;
+  animTimer += dt;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(panX, panY);
+  ctx.scale(zoom, zoom);
 
   if (tiles && mapW && mapH) {
     // размер одного тайла, чтобы весь мир помещался
-    const ts = Math.floor(Math.min(
+    const base = Math.floor(Math.min(
       window.innerWidth / mapW,
       window.innerHeight / mapH
     ));
+    const ts = base;
     // отрисовка земли
     for (let y = 0; y < mapH; y++) {
       for (let x = 0; x < mapW; x++) {
