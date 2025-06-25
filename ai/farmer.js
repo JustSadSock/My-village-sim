@@ -178,8 +178,10 @@ export function update (id, dt, world) {
   const woodPrice = world.priceWood;
 
   /* ---------- 4. Навык и прибыль -------------------------------------- */
-  const harvestSpeed = 1 + skillFood[id] * 0.1;
-  const chopSpeed    = 1 + skillWood[id] * 0.1;
+  // после 50 лет жители постепенно теряют силу
+  const ageMul = age[id] <= 50 ? 1 : Math.max(0.5, 1 - (age[id] - 50) * 0.02);
+  const harvestSpeed = (1 + skillFood[id] * 0.1) * ageMul;
+  const chopSpeed    = (1 + skillWood[id] * 0.1) * ageMul;
   const harvestTime  = TIME_HARVEST / harvestSpeed;
   const chopTime     = TIME_CHOP / chopSpeed;
   const profitHarvest = foodPrice / harvestTime;
@@ -199,13 +201,13 @@ export function update (id, dt, world) {
       if (jobType[id] === JOB_HARVEST) {
         carryFood[id] = Math.min(10, carryFood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
-        if (skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
+        if (age[id] <= 60 && skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
         jobType[id] = carryFood[id] >= 10 ? JOB_STORE_FOOD : JOB_IDLE;
       }
       if (jobType[id] === JOB_CHOP) {
         carryWood[id] = Math.min(10, carryWood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
-        if (skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
+        if (age[id] <= 60 && skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
         jobType[id] = carryWood[id] >= 10 ? JOB_STORE_WOOD : JOB_IDLE;
       }
       if (reserved[idx] === id) reserved[idx] = -1;

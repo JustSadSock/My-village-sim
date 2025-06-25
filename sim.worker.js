@@ -7,7 +7,10 @@ import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from './data/constant
 const MAP_W    = 64;
 const MAP_H    = 64;
 const MAP_SIZE = MAP_W * MAP_H;
-const AGE_SPEED = 1 / 60; // 1 year per 60 sec
+// AGE_SPEED определяет скорость старения.
+// Значение 1/60 означает, что один игровой год длится 60 секунд реального времени.
+// После 50 лет скорость работы постепенно снижается, а после 70 лет жители умирают.
+const AGE_SPEED = 1 / 60;
 const HUNGER_RATE = 100 / 60; // 100 hunger per year
 
 
@@ -209,6 +212,7 @@ function tick() {
     hunger[i] = Math.max(0, hunger[i] - dt * hungerRate);
     thirst[i] = Math.max(0, thirst[i] - dt * 0.2);  // −0.2 ед/сек
     energy[i] = Math.min(100, energy[i] + dt * 0.5);// +0.5 ед/сек
+    // старение происходит непрерывно: 1 игровой год = 60 секунд
     age[i]   += dt * AGE_SPEED;
 
     // смерть от голода или старости
