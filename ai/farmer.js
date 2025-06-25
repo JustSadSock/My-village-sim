@@ -67,16 +67,7 @@ export function update (id, dt, world) {
     }
   }
 
-  // дети до 16 лет не покидают дом
-  if (age[id] < 16 && homeId[id] >= 0) {
-    const hx = houseX[homeId[id]], hy = houseY[homeId[id]];
-    if (posX[id] === hx && posY[id] === hy) {
-      energy[id] = Math.min(100, energy[id] + dt * 10);
-    } else {
-      stepToward(id, hx, hy, world);
-    }
-    return;
-  }
+
 
   // отдых в доме при низкой энергии
   if (energy[id] < 20 && houseCount > 0) {
@@ -105,18 +96,21 @@ export function update (id, dt, world) {
       }
       if (posX[id] === tx && posY[id] === ty) {
         if (si >= 0) {
-          world.deposit(si, carryFood[id], carryWood[id]);
-          carryFood[id] = 0;
-          carryWood[id] = 0;
+          const df = Math.max(carryFood[id] - 5, 0);
+          const dw = Math.max(carryWood[id] - 5, 0);
+          world.deposit(si, df, dw);
+          carryFood[id] = Math.min(carryFood[id], 5);
+          carryWood[id] = Math.min(carryWood[id], 5);
         }
         jobType[id] = 0;
       } else {
         stepToward(id, tx, ty, world);
       }
     } else {
-      world.stockFood += carryFood[id];
-      world.stockWood += carryWood[id];
-      carryFood[id] = carryWood[id] = 0;
+      world.stockFood += Math.max(carryFood[id] - 5, 0);
+      world.stockWood += Math.max(carryWood[id] - 5, 0);
+      carryFood[id] = Math.min(carryFood[id], 5);
+      carryWood[id] = Math.min(carryWood[id], 5);
       jobType[id] = 0;
     }
     return;
@@ -146,7 +140,7 @@ export function update (id, dt, world) {
   if (hunger[id] < 30 && world.stockFood > 0) {
     let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
     for (let i = 0; i < storeCount; i++) {
-      if (world.storeFood[i] > 0) {
+      if (world.storeFood[i] >= 5) {
         const x = storeX[i], y = storeY[i];
         const d = (x - posX[id]) ** 2 + (y - posY[id]) ** 2;
         if (d < best) { best = d; tx = x; ty = y; si = i; }
@@ -154,8 +148,8 @@ export function update (id, dt, world) {
     }
     if (si >= 0) {
       if (posX[id] === tx && posY[id] === ty) {
-        if (world.withdraw(si, 1, 0)) {
-          const restore = 15 + Math.random() * 15;
+        if (world.withdraw(si, 5, 0)) {
+          const restore = (15 + Math.random() * 15) * 5;
           hunger[id] = Math.min(100, hunger[id] + restore);
         }
       } else {
@@ -163,9 +157,12 @@ export function update (id, dt, world) {
       }
       return;
     } else {
-      world.stockFood--;
-      const restore = 15 + Math.random() * 15;
-      hunger[id] = Math.min(100, hunger[id] + restore);
+      const taken = Math.min(5, world.stockFood);
+      world.stockFood -= taken;
+      if (taken > 0) {
+        const restore = (15 + Math.random() * 15) * taken;
+        hunger[id] = Math.min(100, hunger[id] + restore);
+      }
       return;
     }
   }
