@@ -91,6 +91,14 @@ export function update (id, dt, world) {
     return;
   }
 
+  // съесть припасённую еду, если уровень голода низкий
+  if (hunger[id] < 30 && carryFood[id] > 0) {
+    const take = Math.min(carryFood[id], 5);
+    carryFood[id] -= take;
+    const restore = (15 + Math.random() * 15) * take;
+    hunger[id] = Math.min(100, hunger[id] + restore);
+  }
+
   /* ---------- Нести ресурсы на склад ------------------------------- */
   if (carryFood[id] >= 10 || carryWood[id] >= 10 || jobType[id] === JOB_STORE_FOOD || jobType[id] === JOB_STORE_WOOD) {
     if (storeCount > 0) {
