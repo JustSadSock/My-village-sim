@@ -1,6 +1,7 @@
 // main.js — UI и рендер, оптимизировано для мобильных
 
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from './data/constants.js';
+import { JOBS } from './data/jobTypes.js';
 const worker = new Worker('sim.worker.js', { type: 'module' });
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -116,15 +117,15 @@ function showAgent(e) {
     agentInfo.style.display = 'block';
     agentInfo.style.left = e.clientX + 10 + 'px';
     agentInfo.style.top  = e.clientY + 10 + 'px';
-    const jobMap = {
-      0: 'idle',
-      1: 'harvest',
-      2: 'chop',
-      3: 'build',
-      4: 'store food',
-      5: 'store wood',
-      6: 'build store'
-    };
+    const jobMap = {};
+    jobMap[JOBS.IDLE] = 'idle';
+    jobMap[JOBS.HARVEST] = 'harvest';
+    jobMap[JOBS.CHOP] = 'chop';
+    jobMap[JOBS.BUILD] = 'build';
+    jobMap[JOBS.STORE_FOOD] = 'store food';
+    jobMap[JOBS.STORE_WOOD] = 'store wood';
+    jobMap[JOBS.BUILD_STORE] = 'build store';
+    jobMap[JOBS.FARM] = 'farm';
     const job = jobMap[agents.job[idx]] || 'unknown';
     agentInfo.innerHTML = `age:${agents.age[idx].toFixed(0)}<br/>hunger:${agents.hunger[idx].toFixed(0)}<br/>task:${job}`;
     return;

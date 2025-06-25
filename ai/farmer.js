@@ -3,6 +3,15 @@
 /* ------------------------------------------------------------------ */
 /*  Константы тайлов: должны точно совпадать с тем, что в worker.     */
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from '../data/constants.js';
+import {
+  JOB_IDLE,
+  JOB_HARVEST,
+  JOB_CHOP,
+  JOB_BUILD,
+  JOB_STORE_FOOD,
+  JOB_STORE_WOOD,
+  JOB_BUILD_STORE
+} from '../data/jobTypes.js';
 /* ------------------------------------------------------------------ */
 const TIME_HARVEST = 3;  // базовое время сбора пищи
 const TIME_CHOP    = 5;  // базовое время рубки дерева
@@ -83,7 +92,7 @@ export function update (id, dt, world) {
   }
 
   /* ---------- Нести ресурсы на склад ------------------------------- */
-  if (carryFood[id] >= 10 || carryWood[id] >= 10 || jobType[id] === 4 || jobType[id] === 5) {
+  if (carryFood[id] >= 10 || carryWood[id] >= 10 || jobType[id] === JOB_STORE_FOOD || jobType[id] === JOB_STORE_WOOD) {
     if (storeCount > 0) {
       let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
       for (let i = 0; i < storeCount; i++) {
@@ -99,7 +108,7 @@ export function update (id, dt, world) {
           carryFood[id] = Math.min(carryFood[id], 5);
           carryWood[id] = Math.min(carryWood[id], 5);
         }
-        jobType[id] = 0;
+        jobType[id] = JOB_IDLE;
       } else {
         stepToward(id, tx, ty, world);
       }
@@ -108,7 +117,7 @@ export function update (id, dt, world) {
       world.stockWood += Math.max(carryWood[id] - 5, 0);
       carryFood[id] = Math.min(carryFood[id], 5);
       carryWood[id] = Math.min(carryWood[id], 5);
-      jobType[id] = 0;
+      jobType[id] = JOB_IDLE;
     }
     return;
   }
@@ -182,22 +191,22 @@ export function update (id, dt, world) {
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
-  if (jobType[id] === 3 || jobType[id] === 6) return;
+  if (jobType[id] === JOB_BUILD || jobType[id] === JOB_BUILD_STORE) return;
   if (workTimer[id] > 0) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
       tiles[idx] = TILE_GRASS;
-      if (jobType[id] === 1) {
+      if (jobType[id] === JOB_HARVEST) {
         carryFood[id] = Math.min(10, carryFood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
-        jobType[id] = carryFood[id] >= 10 ? 4 : 0;
+        jobType[id] = carryFood[id] >= 10 ? JOB_STORE_FOOD : JOB_IDLE;
       }
-      if (jobType[id] === 2) {
+      if (jobType[id] === JOB_CHOP) {
         carryWood[id] = Math.min(10, carryWood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;
-        jobType[id] = carryWood[id] >= 10 ? 5 : 0;
+        jobType[id] = carryWood[id] >= 10 ? JOB_STORE_WOOD : JOB_IDLE;
       }
       if (reserved[idx] === id) reserved[idx] = -1;
     }
@@ -205,7 +214,7 @@ export function update (id, dt, world) {
   }
   if (tiles[idx] === targetType && reserved[idx] === -1) {
     reserved[idx] = id;
-    jobType[id] = harvestMode ? 1 : 2;
+    jobType[id] = harvestMode ? JOB_HARVEST : JOB_CHOP;
     workTimer[id] = harvestMode ? harvestTime : chopTime;
     return;
   }
