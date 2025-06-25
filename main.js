@@ -48,6 +48,13 @@ function drawStore(x, y, ts) {
   ctx.setLineDash([]);
 }
 
+function drawCorpse(x, y, ts) {
+  ctx.fillStyle = '#aa2222';
+  ctx.beginPath();
+  ctx.arc(x * ts + ts / 2, y * ts + ts / 2, ts * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawVillager(x, y, ts, old) {
   ctx.fillStyle = old ? '#ccc' : '#eee';
   ctx.beginPath();
@@ -55,7 +62,7 @@ function drawVillager(x, y, ts, old) {
   ctx.fill();
 }
 let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [], job: [] },
-    houses = [], stores = [];
+    houses = [], stores = [], corpses = [];
 let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0, stores: 0 }, fps = 0;
 let lastTime = performance.now();
 // убираем смену дня и ночи
@@ -170,6 +177,7 @@ worker.onmessage = e => {
     agents   = msg.agents;
     houses   = msg.houses;
     stores   = msg.stores || [];
+    corpses  = msg.corpses || [];
     stats    = msg.stats;
     fps      = msg.fps;
   }
@@ -213,6 +221,9 @@ function render() {
     stores.forEach(s => {
       drawStore(s.x, s.y, ts);
     });
+
+    // трупы
+    corpses.forEach(c => drawCorpse(c.x, c.y, ts));
 
     // поселенцы
     for (let i = 0; i < agents.x.length; i++) {

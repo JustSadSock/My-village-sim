@@ -50,6 +50,9 @@ const hunger = new Float32Array(MAX_AGENTS);
 const thirst = new Float32Array(MAX_AGENTS);
 const energy = new Float32Array(MAX_AGENTS);
 const homeId = new Int16Array(MAX_AGENTS);
+const parentA = new Int16Array(MAX_AGENTS);
+const parentB = new Int16Array(MAX_AGENTS);
+const spouse  = new Int16Array(MAX_AGENTS);
 const skillFood = new Uint16Array(MAX_AGENTS);
 const skillWood = new Uint16Array(MAX_AGENTS);
 const workTimer = new Float32Array(MAX_AGENTS);
@@ -76,6 +79,12 @@ const storeFood  = new Uint16Array(MAX_STORES);
 const storeWood  = new Uint16Array(MAX_STORES);
 let storeCount = 0;
 
+const MAX_CORPSES = 50;
+const corpseX = new Uint8Array(MAX_CORPSES);
+const corpseY = new Uint8Array(MAX_CORPSES);
+const corpseTimer = new Float32Array(MAX_CORPSES);
+let corpseCount = 0;
+
 const carryFood  = new Uint8Array(MAX_AGENTS);
 const carryWood  = new Uint8Array(MAX_AGENTS);
 
@@ -88,10 +97,12 @@ let _priceWood = 1;
 // Мир для AI
 const world = {
   MAP_W, MAP_H, tiles, reserved,
-  posX, posY, age, hunger, thirst, energy, homeId, skillFood, skillWood, workTimer, jobType, role,
+  posX, posY, age, hunger, thirst, energy, homeId, parentA, parentB, spouse,
+  skillFood, skillWood, workTimer, jobType, role,
   buildX, buildY,
   houseX, houseY, houseCapacity, houseOccupants,
   storeX, storeY, storeSize, storeFood, storeWood,
+  corpseX, corpseY, corpseTimer,
   get agentCount() { return agentCount; },
   set agentCount(v) { agentCount = v; },
   get houseCount() { return houseCount; },
@@ -146,8 +157,11 @@ function spawnAgent(x, y, a = Math.random() * 30 + 10) {
   posY[i]   = y;
   age[i]    = a;
   hunger[i] = thirst[i] = energy[i] = 100;
-  role[i]   = 0;
+  role[i]   = Math.random() < 0.3 ? 1 : 0;
   homeId[i] = -1;
+  parentA[i] = -1;
+  parentB[i] = -1;
+  spouse[i]  = -1;
   skillFood[i]=0;
   skillWood[i]=0;
   workTimer[i]=0; jobType[i]=0;
@@ -202,10 +216,18 @@ function tick() {
 
     // смерть от голода или старости
     if (hunger[i] === 0 || age[i] > 70) {
+      if (corpseCount < MAX_CORPSES) {
+        corpseX[corpseCount] = posX[i];
+        corpseY[corpseCount] = posY[i];
+        corpseTimer[corpseCount] = 60;
+        corpseCount++;
+      }
+      if (spouse[i] >= 0 && spouse[spouse[i]] === i) spouse[spouse[i]] = -1;
       const lastId = --agentCount;
       if(homeId[i]>=0) houseOccupants[homeId[i]]--;
       posX[i]=posX[lastId]; posY[i]=posY[lastId];
       homeId[i]=homeId[lastId]; if(homeId[i]>=0) houseOccupants[homeId[i]]++;
+      parentA[i]=parentA[lastId]; parentB[i]=parentB[lastId]; spouse[i]=spouse[lastId];
       age[i]=age[lastId]; hunger[i]=hunger[lastId];
       thirst[i]=thirst[lastId]; energy[i]=energy[lastId];
       skillFood[i]=skillFood[lastId]; skillWood[i]=skillWood[lastId]; workTimer[i]=workTimer[lastId]; jobType[i]=jobType[lastId]; role[i]=role[lastId];
@@ -231,23 +253,63 @@ function tick() {
 
   updatePrices(dt);
 
+  for (let c = 0; c < corpseCount; c++) {
+    corpseTimer[c] -= dt;
+    if (corpseTimer[c] <= 0) {
+      corpseX[c] = corpseX[corpseCount - 1];
+      corpseY[c] = corpseY[corpseCount - 1];
+      corpseTimer[c] = corpseTimer[corpseCount - 1];
+      corpseCount--;
+      c--;
+    }
+  }
+
   // 3. Обновляем агентов
   for (let i = 0; i < agentCount; i++) {
-    updateFarmer(i, dt, world);
-    updateBuilder(i, dt, world);
+    if (role[i] === 1) updateBuilder(i, dt, world);
+    else updateFarmer(i, dt, world);
   }
 
   // Размножение в домах
   for (let h = 0; h < houseCount && agentCount < MAX_AGENTS; h++) {
     if (houseOccupants[h] >= 2 && houseOccupants[h] < houseCapacity[h]) {
-      let adults = 0;
+      const adults = [];
       for (let i = 0; i < agentCount; i++) {
-        if (homeId[i] === h && age[i] >= 16 && age[i] <= 45) adults++;
+        if (homeId[i] === h && age[i] >= 16 && age[i] <= 45) adults.push(i);
       }
-      if (adults >= 2 && Math.random() < dt * 0.01) {
+      if (adults.length >= 2 && Math.random() < dt * 0.01) {
+        const p1 = adults[Math.random() * adults.length | 0];
+        let p2 = p1;
+        while (p2 === p1) p2 = adults[Math.random() * adults.length | 0];
+        const child = agentCount;
         spawnAgent(houseX[h], houseY[h], 0);
-        homeId[agentCount - 1] = h;
+        homeId[child] = h;
+        parentA[child] = p1;
+        parentB[child] = p2;
+        spouse[child]  = -1;
+        if (spouse[p1] === -1) spouse[p1] = p2;
+        if (spouse[p2] === -1) spouse[p2] = p1;
         houseOccupants[h]++;
+      }
+    }
+  }
+
+  // Взаимодействие и обмен опытом
+  const cellMap = new Map();
+  for (let i = 0; i < agentCount; i++) {
+    const key = posX[i] + "," + posY[i];
+    if (!cellMap.has(key)) cellMap.set(key, []);
+    cellMap.get(key).push(i);
+  }
+  for (const list of cellMap.values()) {
+    if (list.length < 2) continue;
+    for (let a = 0; a < list.length; a++) {
+      for (let b = a + 1; b < list.length; b++) {
+        const i = list[a], j = list[b];
+        if (skillFood[i] > skillFood[j] + 2 && Math.random() < 0.1) skillFood[j]++;
+        if (skillFood[j] > skillFood[i] + 2 && Math.random() < 0.1) skillFood[i]++;
+        if (skillWood[i] > skillWood[j] + 2 && Math.random() < 0.1) skillWood[j]++;
+        if (skillWood[j] > skillWood[i] + 2 && Math.random() < 0.1) skillWood[i]++;
       }
     }
   }
@@ -278,6 +340,10 @@ function tick() {
       size: storeSize[i],
       food: storeFood[i],
       wood: storeWood[i]
+    })),
+    corpses: Array.from({ length: corpseCount }, (_, i) => ({
+      x: corpseX[i],
+      y: corpseY[i]
     })),
     stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount },
     fps: Math.round(1 / dt)

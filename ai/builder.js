@@ -6,6 +6,9 @@ const TIME_BUILD = 8;            // время постройки
 const WOOD_COST  = 15;
 const STORE_WOOD = 20;
 const TIME_STORE = 10;
+const TIME_FARM  = 5;
+
+import { pathStep } from './path.js';
 
 export function init() {}
 
@@ -26,7 +29,7 @@ export function update(id, dt, world) {
   // ограничение числа одновременно строящих
   let active = 0;
   for (let i = 0; i < agentCount; i++) {
-    if (jobType[i] === 3 || jobType[i] === 6) active++;
+    if (jobType[i] === 3 || jobType[i] === 6 || jobType[i] === 7) active++;
   }
   const MAX_ACTIVE_BUILDERS = 2;
   if (active >= MAX_ACTIVE_BUILDERS && jobType[id] === 0) return;
@@ -51,7 +54,7 @@ export function update(id, dt, world) {
     needBuild = !free;
   }
   // продолжить уже начатое строительство независимо от потребностей
-  if (jobType[id] === 3 || jobType[id] === 6) {
+  if (jobType[id] === 3 || jobType[id] === 6 || jobType[id] === 7) {
     if (posX[id] !== buildX[id] || posY[id] !== buildY[id]) {
       stepToward(id, buildX[id], buildY[id], world);
       return;
@@ -59,14 +62,25 @@ export function update(id, dt, world) {
 
     // На месте строительства
     if (workTimer[id] === 0) {
-      const cost = jobType[id] === 3 ? WOOD_COST : STORE_WOOD;
-      if (!takeWood(cost, world)) {
-        reserved[buildY[id] * MAP_W + buildX[id]] = -1;
-        jobType[id] = 0;
-        buildX[id] = buildY[id] = -1;
-        return;
+      if (jobType[id] === 3) {
+        if (!takeWood(WOOD_COST, world)) {
+          reserved[buildY[id] * MAP_W + buildX[id]] = -1;
+          jobType[id] = 0;
+          buildX[id] = buildY[id] = -1;
+          return;
+        }
+        workTimer[id] = TIME_BUILD;
+      } else if (jobType[id] === 6) {
+        if (!takeWood(STORE_WOOD, world)) {
+          reserved[buildY[id] * MAP_W + buildX[id]] = -1;
+          jobType[id] = 0;
+          buildX[id] = buildY[id] = -1;
+          return;
+        }
+        workTimer[id] = TIME_STORE;
+      } else {
+        workTimer[id] = TIME_FARM;
       }
-      workTimer[id] = jobType[id] === 3 ? TIME_BUILD : TIME_STORE;
     }
 
     workTimer[id] -= dt;
@@ -104,12 +118,14 @@ export function update(id, dt, world) {
             break;
           }
         }
-      } else {
+      } else if (jobType[id] === 6) {
         const sc = world.storeCount;
         world.storeX[sc] = buildX[id];
         world.storeY[sc] = buildY[id];
         world.storeSize[sc] = 4;
         world.storeCount = sc + 1;
+      } else {
+        tiles[buildY[id] * MAP_W + buildX[id]] = 3;
       }
       reserved[buildY[id] * MAP_W + buildX[id]] = -1;
       jobType[id] = 0;
@@ -118,13 +134,16 @@ export function update(id, dt, world) {
     return;
   }
 
+  let fields = 0;
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === 3) fields++;
   const needStore = Math.floor(houseCount / 10) > storeCount;
-  if (!needBuild && !needStore) return;
+  const needFarm  = fields < houseCount * 2;
+  if (!needBuild && !needStore && !needFarm) return;
 
   if (jobType[id] !== 0) return;
 
   const buildStore = needStore && stockWood >= STORE_WOOD;
-  if (!buildStore && stockWood < WOOD_COST) return;
+  if (!buildStore && !needFarm && stockWood < WOOD_COST) return;
 
   let bx = -1, by = -1, best = Infinity;
   let refX = posX[id], refY = posY[id];
@@ -156,22 +175,23 @@ export function update(id, dt, world) {
 
   buildX[id] = bx; buildY[id] = by;
   reserved[by * MAP_W + bx] = id;
-  jobType[id] = buildStore ? 6 : 3;
-  workTimer[id] = buildStore ? TIME_STORE : TIME_BUILD;
+  if (buildStore) {
+    jobType[id] = 6;
+    workTimer[id] = TIME_STORE;
+  } else if (needBuild) {
+    jobType[id] = 3;
+    workTimer[id] = TIME_BUILD;
+  } else {
+    jobType[id] = 7;
+    workTimer[id] = TIME_FARM;
+  }
 }
 
 function stepToward(id, tx, ty, world) {
-  const { posX, posY, reserved, MAP_W, MAP_H } = world;
-  const dx = tx - posX[id];
-  const dy = ty - posY[id];
-  let nx = posX[id], ny = posY[id];
-  if (Math.abs(dx) > Math.abs(dy)) nx += Math.sign(dx);
-  else ny += Math.sign(dy);
-  nx = Math.max(0, Math.min(MAP_W - 1, nx));
-  ny = Math.max(0, Math.min(MAP_H - 1, ny));
-  posX[id] = nx;
-  posY[id] = ny;
-
+  const { posX, posY } = world;
+  const { x, y } = pathStep(posX[id], posY[id], tx, ty, world);
+  posX[id] = x;
+  posY[id] = y;
 }
 
 function takeWood(amount, world) {
