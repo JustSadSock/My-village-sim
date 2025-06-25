@@ -2,6 +2,7 @@
 
 import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
+import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from './data/constants.js';
 
 const MAP_W    = 64;
 const MAP_H    = 64;
@@ -9,10 +10,6 @@ const MAP_SIZE = MAP_W * MAP_H;
 const AGE_SPEED = 1 / 60; // 1 year per 60 sec
 const HUNGER_RATE = 100 / 60; // 100 hunger per year
 
-const TILE_GRASS  = 0;
-const TILE_WATER  = 1;
-const TILE_FOREST = 2;
-const TILE_FIELD  = 3;
 
 // Карта
 const tiles = new Uint8Array(MAP_SIZE);

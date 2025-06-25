@@ -2,10 +2,7 @@
 
 /* ------------------------------------------------------------------ */
 /*  Константы тайлов: должны точно совпадать с тем, что в worker.     */
-const TILE_GRASS  = 0;
-const TILE_WATER  = 1;
-const TILE_FOREST = 2;
-const TILE_FIELD  = 3;
+import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from '../data/constants.js';
 /* ------------------------------------------------------------------ */
 const TIME_HARVEST = 3;  // базовое время сбора пищи
 const TIME_CHOP    = 5;  // базовое время рубки дерева

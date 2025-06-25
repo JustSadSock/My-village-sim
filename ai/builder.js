@@ -1,6 +1,6 @@
 // ai/builder.js — поселенцы строят дома при нехватке жилья
 
-const TILE_GRASS = 0;
+import { TILE_GRASS, TILE_FIELD } from '../data/constants.js';
 
 const TIME_BUILD = 8;            // время постройки
 const WOOD_COST  = 15;
@@ -155,7 +155,7 @@ export function update(id, dt, world) {
         world.storeSize[sc] = 4;
         world.storeCount = sc + 1;
       } else {
-        tiles[buildY[id] * MAP_W + buildX[id]] = 3;
+        tiles[buildY[id] * MAP_W + buildX[id]] = TILE_FIELD;
       }
       reserved[buildY[id] * MAP_W + buildX[id]] = -1;
       jobType[id] = 0;
@@ -165,7 +165,7 @@ export function update(id, dt, world) {
   }
 
   let fields = 0;
-  for (let i = 0; i < tiles.length; i++) if (tiles[i] === 3) fields++;
+  for (let i = 0; i < tiles.length; i++) if (tiles[i] === TILE_FIELD) fields++;
   const needStore = Math.floor(houseCount / 10) > storeCount;
   const needFarm  = fields < houseCount * 2;
   if (!needBuild && !needStore && !needFarm) return;
