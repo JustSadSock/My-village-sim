@@ -137,6 +137,8 @@ const world = {
   get priceWood() { return _priceWood; },
   set priceWood(v) { _priceWood = v; },
   deposit(storeIndex, food = 0, wood = 0) {
+    food = Math.max(0, food);
+    wood = Math.max(0, wood);
     if (storeIndex < 0 || storeIndex >= storeCount) return 0;
     const cap = storeSize[storeIndex] * 100;
     const used = storeFood[storeIndex] + storeWood[storeIndex];
@@ -160,6 +162,8 @@ const world = {
     return deposited;
   },
   withdraw(storeIndex, food = 0, wood = 0) {
+    food = Math.max(0, food);
+    wood = Math.max(0, wood);
     if (storeIndex < 0 || storeIndex >= storeCount) return false;
     if (food > storeFood[storeIndex] || wood > storeWood[storeIndex]) return false;
     storeFood[storeIndex] -= food;
