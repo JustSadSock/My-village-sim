@@ -21,18 +21,37 @@ export function init() {}
 
 export function update(id, dt, world) {
   const {
-    age, posX, posY, homeId, hunger,
+    age, posX, posY, homeId, hunger, energy,
     houseX, houseY, houseCapacity, houseOccupants, houseCount,
     MAP_W, MAP_H, tiles, reserved,
     stockWood, stockFood, workTimer, jobType,
     buildX, buildY,
     storeX, storeY, storeSize, storeCount, storeFood,
     agentCount, withdraw,
-    carryFood, role
+    carryFood, role, morale, friend, spouse, parentA, parentB,
+    time
   } = world;
 
   // дети также могут пользоваться складом и строить
   const h = homeId[id];
+
+  // небольшая усталость
+  energy[id] = Math.max(0, energy[id] - dt * 0.2);
+
+  const hour = time % 24;
+  const night = hour < 6 || hour >= 20;
+  if (night) {
+    if (h >= 0 && h < houseCount) {
+      const hx = houseX[h], hy = houseY[h];
+      if (posX[id] === hx && posY[id] === hy) {
+        energy[id] = Math.min(100, energy[id] + dt * 5);
+        morale[id] = Math.min(100, morale[id] + dt * 2);
+      } else {
+        stepToward(id, hx, hy, world);
+      }
+    }
+    return;
+  }
 
   // перекусить из собственных запасов, если других источников нет
   if (hunger[id] < 30 && carryFood[id] > 0) {
@@ -127,7 +146,8 @@ export function update(id, dt, world) {
           buildX[id] = buildY[id] = -1;
           return;
         }
-        workTimer[id] = TIME_BUILD;
+        const moraleMul = 0.5 + morale[id] / 200;
+        workTimer[id] = TIME_BUILD / moraleMul;
       } else if (jobType[id] === JOB_BUILD_STORE) {
         if (!takeWood(STORE_WOOD, world)) {
           reserved[buildY[id] * MAP_W + buildX[id]] = -1;
@@ -135,9 +155,11 @@ export function update(id, dt, world) {
           buildX[id] = buildY[id] = -1;
           return;
         }
-        workTimer[id] = TIME_STORE;
+        const moraleMul = 0.5 + morale[id] / 200;
+        workTimer[id] = TIME_STORE / moraleMul;
       } else {
-        workTimer[id] = TIME_FARM;
+        const moraleMul = 0.5 + morale[id] / 200;
+        workTimer[id] = TIME_FARM / moraleMul;
       }
     }
 
@@ -240,13 +262,16 @@ export function update(id, dt, world) {
   reserved[by * MAP_W + bx] = id;
   if (buildStore) {
     jobType[id] = JOB_BUILD_STORE;
-    workTimer[id] = TIME_STORE;
+    const moraleMul = 0.5 + morale[id] / 200;
+    workTimer[id] = TIME_STORE / moraleMul;
   } else if (needBuild) {
     jobType[id] = JOB_BUILD;
-    workTimer[id] = TIME_BUILD;
+    const moraleMul = 0.5 + morale[id] / 200;
+    workTimer[id] = TIME_BUILD / moraleMul;
   } else {
     jobType[id] = JOB_FARM;
-    workTimer[id] = TIME_FARM;
+    const moraleMul = 0.5 + morale[id] / 200;
+    workTimer[id] = TIME_FARM / moraleMul;
   }
 }
 

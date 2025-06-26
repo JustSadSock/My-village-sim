@@ -33,7 +33,8 @@ export function update (id, dt, world) {
     MAP_W, MAP_H, tiles,
     // ресурсы и популяция
     agentCount, skillFood, skillWood, workTimer, jobType, homeId,
-    carryFood, carryWood,
+    carryFood, carryWood, morale, friend, spouse, parentA, parentB,
+    time,
     // жилища и склады
     houseX, houseY, houseCapacity, houseOccupants, houseCount,
     storeX, storeY, storeSize, storeCount,
@@ -42,6 +43,21 @@ export function update (id, dt, world) {
 
   // лёгкая усталость от времени
   energy[id] = Math.max(0, energy[id] - dt * 0.2);
+
+  const hour = time % 24;
+  const night = hour < 6 || hour >= 20;
+  if (night) {
+    if (homeId[id] >= 0 && homeId[id] < houseCount) {
+      const hx = houseX[homeId[id]], hy = houseY[homeId[id]];
+      if (posX[id] === hx && posY[id] === hy) {
+        energy[id] = Math.min(100, energy[id] + dt * 5);
+        morale[id] = Math.min(100, morale[id] + dt * 2);
+      } else {
+        stepToward(id, hx, hy, world);
+      }
+    }
+    return;
+  }
 
   // проверка дома
   const DESIRED = 2; // желаемое число жителей в доме
@@ -55,24 +71,44 @@ export function update (id, dt, world) {
   // переселение при переполнении относительно желаемого числа жителей
   if (homeId[id] >= 0 && homeId[id] < houseCount) {
     if (houseOccupants[homeId[id]] > DESIRED) {
-      for (let h = 0; h < houseCount; h++) {
-        if (houseOccupants[h] < DESIRED) {
-          houseOccupants[homeId[id]]--;
-          homeId[id] = h;
-          houseOccupants[h]++;
+      let candidate = -1;
+      const rels = [spouse[id], parentA[id], parentB[id], friend[id]];
+      for (const r of rels) {
+        if (r >= 0 && homeId[r] >= 0 && homeId[r] < houseCount && houseOccupants[homeId[r]] < DESIRED) {
+          candidate = homeId[r];
           break;
         }
+      }
+      if (candidate === -1) {
+        for (let h = 0; h < houseCount; h++) {
+          if (houseOccupants[h] < DESIRED) { candidate = h; break; }
+        }
+      }
+      if (candidate >= 0) {
+        houseOccupants[homeId[id]]--;
+        homeId[id] = candidate;
+        houseOccupants[candidate]++;
       }
     }
   }
 
   if (homeId[id] === -1) {
-    for (let h = 0; h < houseCount; h++) {
-      if (houseOccupants[h] < DESIRED) {
-        homeId[id] = h;
-        houseOccupants[h]++;
+    let candidate = -1;
+    const rels = [spouse[id], parentA[id], parentB[id], friend[id]];
+    for (const r of rels) {
+      if (r >= 0 && homeId[r] >= 0 && homeId[r] < houseCount && houseOccupants[homeId[r]] < DESIRED) {
+        candidate = homeId[r];
         break;
       }
+    }
+    if (candidate === -1) {
+      for (let h = 0; h < houseCount; h++) {
+        if (houseOccupants[h] < DESIRED) { candidate = h; break; }
+      }
+    }
+    if (candidate >= 0) {
+      homeId[id] = candidate;
+      houseOccupants[candidate]++;
     }
   }
 
@@ -193,8 +229,9 @@ export function update (id, dt, world) {
   const ageMul = age[id] <= 50 ? 1 : Math.max(0.5, 1 - (age[id] - 50) * 0.02);
   const harvestSpeed = (1 + skillFood[id] * 0.1) * ageMul;
   const chopSpeed    = (1 + skillWood[id] * 0.1) * ageMul;
-  const harvestTime  = TIME_HARVEST / harvestSpeed;
-  const chopTime     = TIME_CHOP / chopSpeed;
+  const moraleMul = 0.5 + morale[id] / 200;
+  const harvestTime  = TIME_HARVEST / (harvestSpeed * moraleMul);
+  const chopTime     = TIME_CHOP / (chopSpeed * moraleMul);
   const profitHarvest = foodPrice / harvestTime;
   const profitChop    = woodPrice / chopTime;
 
