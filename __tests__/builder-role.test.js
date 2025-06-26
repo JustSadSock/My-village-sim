@@ -10,6 +10,12 @@ function createWorld() {
     posY: new Uint8Array(1),
     homeId: new Int16Array(1).fill(-1),
     hunger: new Float32Array(1).fill(100),
+    energy: new Float32Array(1).fill(100),
+    morale: new Float32Array(1).fill(100),
+    friend: new Int16Array(1).fill(-1),
+    spouse: new Int16Array(1).fill(-1),
+    parentA: new Int16Array(1).fill(-1),
+    parentB: new Int16Array(1).fill(-1),
     houseX: new Uint8Array(1),
     houseY: new Uint8Array(1),
     houseCapacity: new Uint8Array(1),
@@ -33,7 +39,8 @@ function createWorld() {
     agentCount: 1,
     withdraw() { return true; },
     carryFood: new Uint8Array(1),
-    role: new Uint8Array(1).fill(1)
+    role: new Uint8Array(1).fill(1),
+    time: 12
   };
 }
 

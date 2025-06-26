@@ -27,6 +27,9 @@ const woodOutHist = new Float32Array(STATS_TICKS).fill(0);
 let statsIdx = 0;
 let tickFoodIn = 0, tickFoodOut = 0, tickWoodIn = 0, tickWoodOut = 0;
 
+const DAY_LENGTH = 120; // seconds per full day
+let worldTime = 0; // current time in seconds
+
 
 // Карта
 const tiles = new Uint8Array(MAP_SIZE);
@@ -75,6 +78,8 @@ const jobType  = new Uint8Array(MAX_AGENTS);
 const role   = new Uint8Array(MAX_AGENTS);
 const buildX  = new Int16Array(MAX_AGENTS);
 const buildY  = new Int16Array(MAX_AGENTS);
+const morale  = new Float32Array(MAX_AGENTS).fill(100);
+const friend  = new Int16Array(MAX_AGENTS).fill(-1);
 let agentCount = 0;
 
 // Дома
@@ -114,7 +119,9 @@ const world = {
   MAP_W, MAP_H, tiles, tileTimer, reserved,
   posX, posY, age, hunger, thirst, energy, homeId, parentA, parentB, spouse,
   skillFood, skillWood, workTimer, jobType, role,
-  buildX, buildY,
+  buildX, buildY, morale, friend,
+  get time() { return (worldTime / DAY_LENGTH) * 24; },
+  set time(v) { worldTime = (v / 24) * DAY_LENGTH; },
   houseX, houseY, houseCapacity, houseOccupants,
   storeX, storeY, storeSize, storeFood, storeWood,
   corpseX, corpseY, corpseTimer,
@@ -198,6 +205,8 @@ function spawnAgent(x, y, a = Math.random() * 30 + 10) {
   workTimer[i]=0; jobType[i]=0;
   buildX[i] = -1; buildY[i] = -1;
   carryFood[i]=0; carryWood[i]=0;
+  morale[i] = 100;
+  friend[i] = -1;
 }
 for (let i = 0; i < 20; i++) {
   spawnAgent(
@@ -295,6 +304,7 @@ function tick() {
   const now = performance.now();
   const dt  = (now - last) / 1000 * gameSpeed;
   last = now;
+  worldTime = (worldTime + dt) % DAY_LENGTH;
 
   // 1. Биологические нужды
   for (let i = 0; i < agentCount; i++) {
@@ -302,6 +312,9 @@ function tick() {
     hunger[i] = Math.max(0, hunger[i] - dt * hungerRate);
     thirst[i] = Math.max(0, thirst[i] - dt * 0.2);  // −0.2 ед/сек
     energy[i] = Math.min(100, energy[i] + dt * 0.5);// +0.5 ед/сек
+    morale[i] = Math.min(100, morale[i] + dt * 0.5);
+    if (hunger[i] < 30 || thirst[i] < 30 || energy[i] < 20)
+      morale[i] = Math.max(0, morale[i] - dt * 5);
     // старение происходит непрерывно: 1 игровой год = 60 секунд
     age[i]   += dt * AGE_SPEED;
 
@@ -325,7 +338,12 @@ function tick() {
       skillFood[i]=skillFood[lastId]; skillWood[i]=skillWood[lastId]; workTimer[i]=workTimer[lastId]; jobType[i]=jobType[lastId]; role[i]=role[lastId];
       buildX[i]=buildX[lastId]; buildY[i]=buildY[lastId];
       carryFood[i]=carryFood[lastId]; carryWood[i]=carryWood[lastId];
+      morale[i]=morale[lastId]; friend[i]=friend[lastId];
       for (let r = 0; r < reserved.length; r++) if (reserved[r] === i) reserved[r] = -1;
+      for (let f = 0; f < agentCount; f++) {
+        if (friend[f] === lastId) friend[f] = i;
+        if (friend[f] >= agentCount) friend[f] = -1;
+      }
       emit('death', deadInfo);
       i--;
       continue;
@@ -382,9 +400,16 @@ function tick() {
         if (homeId[i] === h && age[i] >= 16 && age[i] <= 45) adults.push(i);
       }
       if (adults.length >= 2 && Math.random() < dt * 0.01) {
-        const p1 = adults[Math.random() * adults.length | 0];
-        let p2 = p1;
-        while (p2 === p1) p2 = adults[Math.random() * adults.length | 0];
+        let pair = null;
+        for (let a = 0; a < adults.length && !pair; a++) {
+          for (let b = a + 1; b < adults.length && !pair; b++) {
+            const i = adults[a], j = adults[b];
+            if (spouse[i] === j || spouse[j] === i || friend[i] === j || friend[j] === i) pair = [i, j];
+          }
+        }
+        const p1 = pair ? pair[0] : adults[Math.random() * adults.length | 0];
+        let p2 = pair ? pair[1] : p1;
+        while (!pair && p2 === p1) p2 = adults[Math.random() * adults.length | 0];
         const child = agentCount;
         spawnAgent(houseX[h], houseY[h], 0);
         homeId[child] = h;
@@ -415,6 +440,13 @@ function tick() {
         if (skillFood[j] > skillFood[i] + 2 && Math.random() < 0.1) skillFood[i]++;
         if (skillWood[i] > skillWood[j] + 2 && Math.random() < 0.1) skillWood[j]++;
         if (skillWood[j] > skillWood[i] + 2 && Math.random() < 0.1) skillWood[i]++;
+        if (friend[i] === j || friend[j] === i || spouse[i] === j || spouse[j] === i) {
+          morale[i] = Math.min(100, morale[i] + 2);
+          morale[j] = Math.min(100, morale[j] + 2);
+        } else if (Math.random() < 0.01) {
+          if (friend[i] === -1) friend[i] = j;
+          if (friend[j] === -1) friend[j] = i;
+        }
       }
     }
   }
