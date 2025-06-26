@@ -1,28 +1,5 @@
 import { test, expect } from '@jest/globals';
-
-function removeAgent(i, world) {
-  const {
-    posX, posY, homeId, parentA, parentB, spouse,
-    age, hunger, thirst, energy,
-    skillFood, skillWood, workTimer, jobType, role,
-    buildX, buildY, carryFood, carryWood,
-    houseOccupants, reserved
-  } = world;
-  if (spouse[i] >= 0 && spouse[spouse[i]] === i) spouse[spouse[i]] = -1;
-  const lastId = --world.agentCount;
-  if (homeId[i] >= 0) houseOccupants[homeId[i]]--;
-  posX[i] = posX[lastId]; posY[i] = posY[lastId];
-  homeId[i] = homeId[lastId]; if (homeId[i] >= 0) houseOccupants[homeId[i]]++;
-  parentA[i] = parentA[lastId]; parentB[i] = parentB[lastId]; spouse[i] = spouse[lastId];
-  age[i] = age[lastId]; hunger[i] = hunger[lastId];
-  thirst[i] = thirst[lastId]; energy[i] = energy[lastId];
-  skillFood[i] = skillFood[lastId]; skillWood[i] = skillWood[lastId];
-  workTimer[i] = workTimer[lastId]; jobType[i] = jobType[lastId]; role[i] = role[lastId];
-  buildX[i] = buildX[lastId]; buildY[i] = buildY[lastId];
-  carryFood[i] = carryFood[lastId]; carryWood[i] = carryWood[lastId];
-  for (let r = 0; r < reserved.length; r++) if (reserved[r] === i) reserved[r] = -1;
-  for (let r = 0; r < reserved.length; r++) if (reserved[r] >= world.agentCount) reserved[r] = -1;
-}
+import { removeAgent } from '../utils/removeAgent.js';
 
 test('removing agent clears reservations and keeps carry values', () => {
   const world = {
