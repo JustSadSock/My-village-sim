@@ -300,7 +300,7 @@ self.onmessage = e => {
 };
 function tick() {
   recordStats();
-  clearPathCache();
+  clearPathCache(agentCount * 10);
   const now = performance.now();
   const dt  = (now - last) / 1000 * gameSpeed;
   last = now;

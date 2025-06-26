@@ -79,7 +79,7 @@ function aStar(sx, sy, tx, ty, world) {
 
 const pathCache = new Map();
 
-export function clearPathCache(limit = 1000) {
+export function clearPathCache(limit = 200) {
   if (pathCache.size > limit) pathCache.clear();
 }
 

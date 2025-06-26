@@ -163,7 +163,7 @@ function showAgent(e) {
     jobMap[JOBS.BUILD_STORE] = 'build store';
     jobMap[JOBS.FARM] = 'farm';
     const job = jobMap[agents.job[idx]] || 'unknown';
-    agentInfo.innerHTML = `age:${agents.age[idx].toFixed(0)}<br/>hunger:${agents.hunger[idx].toFixed(0)}<br/>task:${job}`;
+    agentInfo.textContent = `age:${agents.age[idx].toFixed(0)}\nhunger:${agents.hunger[idx].toFixed(0)}\ntask:${job}`;
     return;
   }
   for (let i = 0; i < houses.length; i++) {
@@ -171,7 +171,7 @@ function showAgent(e) {
       agentInfo.style.display = 'block';
       agentInfo.style.left = e.clientX + 10 + 'px';
       agentInfo.style.top  = e.clientY + 10 + 'px';
-      agentInfo.innerHTML = `house ${i}<br/>cap:${houses[i].capacity} occ:${houses[i].occupants}`;
+      agentInfo.textContent = `house ${i}\ncap:${houses[i].capacity} occ:${houses[i].occupants}`;
       return;
     }
   }
@@ -180,7 +180,7 @@ function showAgent(e) {
       agentInfo.style.display = 'block';
       agentInfo.style.left = e.clientX + 10 + 'px';
       agentInfo.style.top  = e.clientY + 10 + 'px';
-      agentInfo.innerHTML = `store ${i}<br/>food:${stores[i].food} wood:${stores[i].wood}`;
+      agentInfo.textContent = `store ${i}\nfood:${stores[i].food} wood:${stores[i].wood}`;
       return;
     }
   }
@@ -299,12 +299,12 @@ function render() {
   hud.fps.textContent    = `FPS:  ${fps}`;
 
   if (panel.style.display !== 'none') {
-    let html = `<b>World</b> pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses} stores:${stats.stores}<br/>` +
-               `priceF:${stats.priceFood.toFixed(2)} priceW:${stats.priceWood.toFixed(2)}<br/><br/>`;
+    let text = `World pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses} stores:${stats.stores}\n` +
+               `priceF:${stats.priceFood.toFixed(2)} priceW:${stats.priceWood.toFixed(2)}\n\n`;
     for (let i = 0; i < agents.x.length; i++) {
-      html += `#${i} age:${agents.age[i].toFixed(1)} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}<br/>`;
+      text += `#${i} age:${agents.age[i].toFixed(1)} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}\n`;
     }
-    panel.innerHTML = html;
+    panel.textContent = text;
   }
 
   requestAnimationFrame(render);
