@@ -71,6 +71,12 @@
   font-size: 12px;
 }
 
+/* highlighted state for selected buttons */
+.active {
+  background: #444;
+  color: #fff;
+}
+
 .panel {
   position: fixed;
   top: 6px;
