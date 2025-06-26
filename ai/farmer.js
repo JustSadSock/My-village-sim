@@ -2,7 +2,8 @@
 
 /* ------------------------------------------------------------------ */
 /*  Константы тайлов: должны точно совпадать с тем, что в worker.     */
-import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from '../data/constants.js';
+import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
+         TILE_FIELD_GROW, TILE_FOREST_GROW } from '../data/constants.js';
 import {
   JOB_IDLE,
   JOB_HARVEST,
@@ -15,6 +16,8 @@ import {
 /* ------------------------------------------------------------------ */
 const TIME_HARVEST = 3;  // базовое время сбора пищи
 const TIME_CHOP    = 5;  // базовое время рубки дерева
+const FIELD_GROW_TIME = 30;
+const FOREST_GROW_TIME = 60;
 
 import { pathStep } from './path.js';
 
@@ -198,6 +201,7 @@ export function update (id, dt, world) {
   let harvestMode = profitHarvest >= profitChop;
   if (hunger[id] < 30 && world.stockFood === 0) harvestMode = true;
   const targetType  = harvestMode ? TILE_FIELD : TILE_FOREST;
+  const growType = harvestMode ? TILE_FIELD_GROW : TILE_FOREST_GROW;
 
   /* ---------- 5. Работа на месте или поиск тайла ---------------------- */
   const idx = posY[id] * MAP_W + posX[id];
@@ -205,14 +209,17 @@ export function update (id, dt, world) {
   if (workTimer[id] > 0) {
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
-      tiles[idx] = TILE_GRASS;
       if (jobType[id] === JOB_HARVEST) {
+        tiles[idx] = TILE_FIELD_GROW;
+        world.tileTimer[idx] = FIELD_GROW_TIME;
         carryFood[id] = Math.min(10, carryFood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (age[id] <= 60 && skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
         jobType[id] = carryFood[id] >= 10 ? JOB_STORE_FOOD : JOB_IDLE;
       }
       if (jobType[id] === JOB_CHOP) {
+        tiles[idx] = TILE_FOREST_GROW;
+        world.tileTimer[idx] = FOREST_GROW_TIME;
         carryWood[id] = Math.min(10, carryWood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (age[id] <= 60 && skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;

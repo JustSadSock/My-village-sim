@@ -1,6 +1,7 @@
 // main.js — UI и рендер, оптимизировано для мобильных
 
-import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from './data/constants.js';
+import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
+         TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
 import { JOBS } from './data/jobTypes.js';
 const worker = new Worker('sim.worker.js', { type: 'module' });
 const canvas = document.getElementById('game');
@@ -30,7 +31,9 @@ const TILE_COLORS = {
   grass:  '#3b963b',
   water:  '#3093ff',
   forest: '#2e7b2e',
-  field:  '#cfa447'
+  field:  '#cfa447',
+  fieldGrow: '#9c7c32',
+  forestGrow: '#1f5d1f'
 };
 
 function drawHouse(x, y, ts) {
@@ -236,10 +239,11 @@ function render() {
     for (let y = 0; y < mapH; y++) {
       for (let x = 0; x < mapW; x++) {
         const t = tiles[y * mapW + x];
-        // 0 = grass, 1 = water, 2 = forest, 3 = field
         if (t === TILE_WATER) ctx.fillStyle = TILE_COLORS.water;
         else if (t === TILE_FOREST) ctx.fillStyle = TILE_COLORS.forest;
         else if (t === TILE_FIELD) ctx.fillStyle = TILE_COLORS.field;
+        else if (t === TILE_FIELD_GROW) ctx.fillStyle = TILE_COLORS.fieldGrow;
+        else if (t === TILE_FOREST_GROW) ctx.fillStyle = TILE_COLORS.forestGrow;
         else ctx.fillStyle = TILE_COLORS.grass;
         ctx.fillRect(x * ts, y * ts, ts, ts);
       }
