@@ -21,6 +21,10 @@ const FOREST_GROW_TIME = 60;
 
 import { pathStep } from './path.js';
 
+export function isFoodLow(world) {
+  return world.stockFood < world.agentCount * 2;
+}
+
 export function init () {
   /* ничего инициализировать не нужно */
 }
@@ -40,6 +44,8 @@ export function update (id, dt, world) {
     storeX, storeY, storeSize, storeCount,
     reserved
   } = world;
+
+  const lowFood = isFoodLow(world);
 
   // лёгкая усталость от времени
   energy[id] = Math.max(0, energy[id] - dt * 0.2);
@@ -235,7 +241,7 @@ export function update (id, dt, world) {
   const profitHarvest = foodPrice / harvestTime;
   const profitChop    = woodPrice / chopTime;
 
-  let harvestMode = profitHarvest >= profitChop;
+  let harvestMode = lowFood || profitHarvest >= profitChop;
   if (hunger[id] < 30 && world.stockFood === 0) harvestMode = true;
   const targetType  = harvestMode ? TILE_FIELD : TILE_FOREST;
   const growType = harvestMode ? TILE_FIELD_GROW : TILE_FOREST_GROW;

@@ -44,15 +44,15 @@ function createWorld() {
   };
 }
 
-test('builder toggles back when food stock is sufficient', () => {
+test('builder toggles role when food supply changes', () => {
   const world = createWorld();
 
   // low food causes switch to farmer
   updateBuilder(0, 0, world);
   expect(world.role[0]).toBe(0);
 
-  // replenish food and run update again
-  world.stockFood = 2;
+  // replenish food comfortably above threshold and run update again
+  world.stockFood = 4;
   updateBuilder(0, 0, world);
   expect(world.role[0]).toBe(1);
 });

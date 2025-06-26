@@ -16,6 +16,7 @@ const TIME_FARM  = 5;
 
 import { pathStep } from './path.js';
 import { emit } from '../events/events.js';
+import { isFoodLow } from './farmer.js';
 
 export function init() {}
 
@@ -63,13 +64,13 @@ export function update(id, dt, world) {
   }
 
   // при нехватке еды бездействующий строитель переключается на фермерские работы
-  if (stockFood < agentCount && jobType[id] === JOB_IDLE) {
+  if (isFoodLow(world) && jobType[id] === JOB_IDLE) {
     role[id] = 0; // стать фермером
     return;
   }
 
   // запасы восстановились — возвращаемся к строительству
-  if (stockFood >= agentCount * 2 && role[id] === 0) {
+  if (stockFood >= agentCount * 4 && role[id] === 0) {
     role[id] = 1;
   }
 
