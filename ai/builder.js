@@ -48,6 +48,11 @@ export function update(id, dt, world) {
     return;
   }
 
+  // запасы восстановились — возвращаемся к строительству
+  if (stockFood >= agentCount * 2 && role[id] === 0) {
+    role[id] = 1;
+  }
+
   if (hunger[id] < 30 && stockFood > 0) {
     let best = Infinity, tx = posX[id], ty = posY[id], si = -1;
     for (let i = 0; i < storeCount; i++) {
