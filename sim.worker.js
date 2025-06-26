@@ -2,6 +2,7 @@
 
 import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
+import { emit } from './events/events.js';
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from './data/constants.js';
 
 const MAP_W    = 64;
@@ -281,6 +282,7 @@ function tick() {
 
     // смерть от голода или старости
     if (hunger[i] === 0 || age[i] > 70) {
+      const deadInfo = { id: i, x: posX[i], y: posY[i] };
       if (corpseCount < MAX_CORPSES) {
         corpseX[corpseCount] = posX[i];
         corpseY[corpseCount] = posY[i];
@@ -299,6 +301,7 @@ function tick() {
       buildX[i]=buildX[lastId]; buildY[i]=buildY[lastId];
       carryFood[i]=carryFood[lastId]; carryWood[i]=carryWood[lastId];
       for (let r = 0; r < reserved.length; r++) if (reserved[r] === i) reserved[r] = -1;
+      emit('death', deadInfo);
       i--;
       continue;
     }
@@ -355,6 +358,7 @@ function tick() {
         parentA[child] = p1;
         parentB[child] = p2;
         spouse[child]  = -1;
+        emit('birth', { id: child, x: houseX[h], y: houseY[h] });
         if (spouse[p1] === -1) spouse[p1] = p2;
         if (spouse[p2] === -1) spouse[p2] = p1;
         houseOccupants[h]++;
