@@ -93,22 +93,38 @@ resize();
 
 // переключение панели с жителями
 function togglePanel() {
-  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  detailsBtn.classList.toggle('active', open);
 }
 window.addEventListener('keydown', e => {
   if (e.key === 'v') togglePanel();
 });
 detailsBtn.addEventListener('click', togglePanel);
 if (speedControls) {
+  const defaultBtn = speedControls.querySelector('[data-s="1"]');
+  if (defaultBtn) defaultBtn.classList.add('active');
   speedControls.addEventListener('click', e => {
-    const v = e.target.getAttribute('data-s');
-    if (v !== null) worker.postMessage({type:'speed', value: Number(v)});
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const v = btn.getAttribute('data-s');
+    if (v !== null) {
+      worker.postMessage({type:'speed', value: Number(v)});
+      speedControls.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
   });
 }
 if (buildControls) {
   buildControls.addEventListener('click', e => {
-    const mode = e.target.getAttribute('data-build');
-    if (mode) buildMode = mode;
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const mode = btn.getAttribute('data-build');
+    if (mode) {
+      buildMode = mode;
+      buildControls.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
   });
 }
 
@@ -180,6 +196,9 @@ canvas.addEventListener('pointerdown', e => {
     const y = Math.floor((e.clientY - panY) / ts);
     worker.postMessage({type:'place', what: buildMode, x, y});
     buildMode = null;
+    if (buildControls) {
+      buildControls.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    }
     return;
   }
   panning = true;
