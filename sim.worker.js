@@ -2,6 +2,7 @@
 
 import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
+import { clearPathCache } from './ai/path.js';
 import { emit } from './events/events.js';
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
          TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
@@ -290,6 +291,7 @@ self.onmessage = e => {
 };
 function tick() {
   recordStats();
+  clearPathCache();
   const now = performance.now();
   const dt  = (now - last) / 1000 * gameSpeed;
   last = now;

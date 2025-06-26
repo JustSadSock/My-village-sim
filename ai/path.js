@@ -79,6 +79,10 @@ function aStar(sx, sy, tx, ty, world) {
 
 const pathCache = new Map();
 
+export function clearPathCache(limit = 1000) {
+  if (pathCache.size > limit) pathCache.clear();
+}
+
 export function pathStep(sx, sy, tx, ty, world) {
   const key = `${sx},${sy}->${tx},${ty}`;
   let entry = pathCache.get(key);
@@ -89,6 +93,7 @@ export function pathStep(sx, sy, tx, ty, world) {
   }
 
   if (entry.path.length < 2 || entry.index + 1 >= entry.path.length) {
+    pathCache.delete(key);
     return { x: sx, y: sy };
   }
 
