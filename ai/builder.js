@@ -15,6 +15,7 @@ const TIME_STORE = 10;
 const TIME_FARM  = 5;
 
 import { pathStep } from './path.js';
+import { emit } from '../events/events.js';
 
 export function init() {}
 
@@ -149,6 +150,7 @@ export function update(id, dt, world) {
         world.houseCapacity[hc] = 5;
         world.houseOccupants[hc] = 0;
         world.houseCount = hc + 1;
+        emit('building-complete', { type: 'house', x: buildX[id], y: buildY[id] });
 
         if (world.storeCount < world.storeX.length) {
           const dirs = [
@@ -181,8 +183,10 @@ export function update(id, dt, world) {
         world.storeY[sc] = buildY[id];
         world.storeSize[sc] = 4;
         world.storeCount = sc + 1;
+        emit('building-complete', { type: 'store', x: buildX[id], y: buildY[id] });
       } else {
         tiles[buildY[id] * MAP_W + buildX[id]] = TILE_FIELD;
+        emit('building-complete', { type: 'field', x: buildX[id], y: buildY[id] });
       }
       reserved[buildY[id] * MAP_W + buildX[id]] = -1;
       jobType[id] = JOB_IDLE;
