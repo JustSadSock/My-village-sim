@@ -1,6 +1,6 @@
 // ai/builder.js — поселенцы строят дома при нехватке жилья
 
-import { TILE_GRASS, TILE_FIELD } from '../data/constants.js';
+import { TILE_GRASS, TILE_FIELD, TILE_FIELD_GROW } from '../data/constants.js';
 import {
   JOB_IDLE,
   JOB_BUILD,
@@ -196,7 +196,9 @@ export function update(id, dt, world) {
   }
 
   let fields = 0;
-  for (let i = 0; i < tiles.length; i++) if (tiles[i] === TILE_FIELD) fields++;
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] === TILE_FIELD || tiles[i] === TILE_FIELD_GROW) fields++;
+  }
   const needStore = Math.floor(houseCount / 10) > storeCount;
   const needFarm  = fields < houseCount * 2;
   if (!needBuild && !needStore && !needFarm) return;

@@ -3,7 +3,8 @@
 import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
 import { emit } from './events/events.js';
-import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD } from './data/constants.js';
+import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
+         TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
 
 const MAP_W    = 64;
 const MAP_H    = 64;
@@ -13,6 +14,8 @@ const MAP_SIZE = MAP_W * MAP_H;
 // После 50 лет скорость работы постепенно снижается, а после 70 лет жители умирают.
 const AGE_SPEED = 1 / 60;
 const HUNGER_RATE = 100 / 60; // 100 hunger per year
+const FIELD_GROW_TIME = 30;  // время созревания поля
+const FOREST_GROW_TIME = 60; // время отрастания леса
 
 // Sliding window for production/consumption statistics
 const STATS_TICKS = 60;
@@ -26,6 +29,7 @@ let tickFoodIn = 0, tickFoodOut = 0, tickWoodIn = 0, tickWoodOut = 0;
 
 // Карта
 const tiles = new Uint8Array(MAP_SIZE);
+const tileTimer = new Float32Array(MAP_SIZE).fill(0);
 function addTerrain(type, seeds, steps) {
   for (let s = 0; s < seeds; s++) {
     let x = Math.random() * MAP_W | 0;
@@ -106,7 +110,7 @@ let _priceWood = 1;
 
 // Мир для AI
 const world = {
-  MAP_W, MAP_H, tiles, reserved,
+  MAP_W, MAP_H, tiles, tileTimer, reserved,
   posX, posY, age, hunger, thirst, energy, homeId, parentA, parentB, spouse,
   skillFood, skillWood, workTimer, jobType, role,
   buildX, buildY,
@@ -221,6 +225,8 @@ function placeBuilding(type, x, y) {
     storeWood[storeCount] = 0;
     storeCount++;
     _stockWood -= 20;
+  } else if (type === 'field') {
+    tiles[y * MAP_W + x] = TILE_FIELD;
   }
 }
 
@@ -234,9 +240,22 @@ function updatePrices(dt) {
   const supplyWood = woodInHist.reduce((a, b) => a + b, 0);
   const demandWood = woodOutHist.reduce((a, b) => a + b, 0);
 
+  // прогноз роста населения в ближайшую минуту
+  let potential = 0;
+  for (let h = 0; h < houseCount; h++) {
+    if (houseOccupants[h] >= 2 && houseOccupants[h] < houseCapacity[h]) potential++;
+  }
+  const futurePop = agentCount + potential * 0.01 * 60; // вероятность рождения
+  const popFactor = futurePop / Math.max(agentCount, 1);
+
+  // оценка потребности в дереве по планируемым домам
+  const desiredHouses = Math.ceil(futurePop / 2);
+  const toBuild = Math.max(0, desiredHouses - houseCount);
+  const futureWoodNeed = toBuild * 15;
+
   const ratioFood = (demandFood + 0.1) / (supplyFood + 0.1);
-  const ratioWood = (demandWood + 0.1) / (supplyWood + 0.1);
-  const targetFood = ratioFood * agentCount / Math.max(_stockFood, 1);
+  const ratioWood = (demandWood + futureWoodNeed + 0.1) / (supplyWood + 0.1);
+  const targetFood = ratioFood * popFactor * agentCount / Math.max(_stockFood, 1);
   const targetWood = ratioWood * agentCount / Math.max(_stockWood, 1);
 
   _priceFood += (targetFood - _priceFood) * dt * 3;
@@ -316,13 +335,21 @@ function tick() {
     if (reserved[i] >= agentCount) reserved[i] = -1;
   }
 
-  // 2. Реген поля и леса (шанс зависит от скорости)
+  // 2. Регенерация ресурсов
   for (let i = 0; i < MAP_SIZE; i++) {
-    if (tiles[i] === TILE_GRASS && Math.random() < 0.0005 * dt) {
-      tiles[i] = TILE_FIELD;
-    }
-    if (tiles[i] === TILE_GRASS && Math.random() < 0.0003 * dt) {
-      tiles[i] = TILE_FOREST;
+    if (tileTimer[i] > 0) {
+      tileTimer[i] -= dt;
+      if (tileTimer[i] <= 0) {
+        if (tiles[i] === TILE_FIELD_GROW) tiles[i] = TILE_FIELD;
+        else if (tiles[i] === TILE_FOREST_GROW) tiles[i] = TILE_FOREST;
+      }
+    } else {
+      if (tiles[i] === TILE_GRASS && Math.random() < 0.0005 * dt) {
+        tiles[i] = TILE_FIELD;
+      }
+      if (tiles[i] === TILE_GRASS && Math.random() < 0.0003 * dt) {
+        tiles[i] = TILE_FOREST;
+      }
     }
   }
 
