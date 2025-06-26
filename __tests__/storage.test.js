@@ -10,6 +10,8 @@ function createStorage(size = 1) {
   let tickFoodIn = 0, tickWoodIn = 0, tickFoodOut = 0, tickWoodOut = 0;
 
   function deposit(storeIndex, food = 0, wood = 0) {
+    food = Math.max(0, food);
+    wood = Math.max(0, wood);
     if (storeIndex < 0 || storeIndex >= storeCount) return 0;
     const cap = storeSize[storeIndex] * 100;
     const used = storeFood[storeIndex] + storeWood[storeIndex];
@@ -34,6 +36,8 @@ function createStorage(size = 1) {
   }
 
   function withdraw(storeIndex, food = 0, wood = 0) {
+    food = Math.max(0, food);
+    wood = Math.max(0, wood);
     if (storeIndex < 0 || storeIndex >= storeCount) return false;
     if (food > storeFood[storeIndex] || wood > storeWood[storeIndex]) return false;
     storeFood[storeIndex] -= food;
@@ -105,6 +109,25 @@ describe('storage deposit/withdraw', () => {
     expect(ok).toBe(false);
     expect(storage.storeFood[0]).toBe(3);
     expect(storage.stockFood).toBe(0);
+  });
+
+  test('negative values are ignored', () => {
+    storage.storeFood[0] = 50;
+    storage.storeWood[0] = 20;
+
+    let deposited = storage.deposit(0, -10, -5);
+    expect(deposited).toBe(0);
+    expect(storage.storeFood[0]).toBe(50);
+    expect(storage.storeWood[0]).toBe(20);
+    expect(storage.stockFood).toBe(0);
+    expect(storage.stockWood).toBe(0);
+
+    const result = storage.withdraw(0, -15, -3);
+    expect(result).toBe(true); // withdraw of 0 should succeed
+    expect(storage.storeFood[0]).toBe(50);
+    expect(storage.storeWood[0]).toBe(20);
+    expect(storage.stockFood).toBe(0);
+    expect(storage.stockWood).toBe(0);
   });
 });
 
