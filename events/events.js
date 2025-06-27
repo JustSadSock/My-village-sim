@@ -1,6 +1,7 @@
 // events/events.js — минимальный EventEmitter для симуляции
 
 const listeners = {};
+export const eventQueue = [];
 
 /**
  * Подписаться на событие.
@@ -31,13 +32,15 @@ export function off(event, fn) {
  */
 export function emit(event, payload) {
   const arr = listeners[event];
-  if (!arr) return;
-  // копируем, чтобы обработчики могли отписываться во время итерации
-  arr.slice().forEach(fn => {
-    try {
-      fn(payload);
-    } catch (e) {
-      console.error(`Error in handler for "${event}":`, e);
-    }
-  });
+  if (arr) {
+    // копируем, чтобы обработчики могли отписываться во время итерации
+    arr.slice().forEach(fn => {
+      try {
+        fn(payload);
+      } catch (e) {
+        console.error(`Error in handler for "${event}":`, e);
+      }
+    });
+  }
+  eventQueue.push({ type: event, payload });
 }

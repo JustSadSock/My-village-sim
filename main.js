@@ -24,6 +24,17 @@ const buildControls = document.getElementById('build-controls');
 const traderBtn = document.getElementById('trader-btn');
 const saveBtn = document.getElementById('save-btn');
 const loadBtn = document.getElementById('load-btn');
+const notifications = document.createElement('div');
+notifications.id = 'notifications';
+document.body.appendChild(notifications);
+
+function notify(text) {
+  const div = document.createElement('div');
+  div.className = 'notification';
+  div.textContent = text;
+  notifications.appendChild(div);
+  setTimeout(() => div.remove(), 4000);
+}
 
 let mapW = 0, mapH = 0;
 
@@ -269,6 +280,19 @@ worker.onmessage = e => {
     corpses  = msg.corpses || [];
     stats    = msg.stats;
     fps      = msg.fps;
+    if (msg.events) {
+      msg.events.forEach(ev => {
+        let text = ev.type;
+        if (ev.type === 'birth') {
+          text = `Birth at (${ev.payload.x},${ev.payload.y})`;
+        } else if (ev.type === 'death') {
+          text = `Death at (${ev.payload.x},${ev.payload.y})`;
+        } else if (ev.type === 'building-complete') {
+          text = `Built ${ev.payload.type} at (${ev.payload.x},${ev.payload.y})`;
+        }
+        notify(text);
+      });
+    }
   }
 };
 
