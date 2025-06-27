@@ -6,6 +6,7 @@ export const JOB_STORE_FOOD = 4;
 export const JOB_STORE_WOOD = 5;
 export const JOB_BUILD_STORE = 6;
 export const JOB_FARM = 7;
+export const JOB_TRADER = 8;
 
 export const JOBS = {
   IDLE: JOB_IDLE,
@@ -15,5 +16,6 @@ export const JOBS = {
   STORE_FOOD: JOB_STORE_FOOD,
   STORE_WOOD: JOB_STORE_WOOD,
   BUILD_STORE: JOB_BUILD_STORE,
-  FARM: JOB_FARM
+  FARM: JOB_FARM,
+  TRADER: JOB_TRADER
 };
