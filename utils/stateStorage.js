@@ -37,6 +37,9 @@ export function serializeWorld(world) {
     storeSize: Array.from(world.storeSize.slice(0, world.storeCount)),
     storeFood: Array.from(world.storeFood.slice(0, world.storeCount)),
     storeWood: Array.from(world.storeWood.slice(0, world.storeCount)),
+    marketCount: world.marketCount,
+    marketX: Array.from(world.marketX.slice(0, world.marketCount)),
+    marketY: Array.from(world.marketY.slice(0, world.marketCount)),
     corpseCount: world.corpseCount,
     corpseX: Array.from(world.corpseX.slice(0, world.corpseCount)),
     corpseY: Array.from(world.corpseY.slice(0, world.corpseCount)),
@@ -95,6 +98,10 @@ export function deserializeWorld(world, data) {
   copyArray(world.storeSize, data.storeSize || [], world.storeCount);
   copyArray(world.storeFood, data.storeFood || [], world.storeCount);
   copyArray(world.storeWood, data.storeWood || [], world.storeCount);
+
+  world.marketCount = data.marketCount ?? 0;
+  copyArray(world.marketX, data.marketX || [], world.marketCount);
+  copyArray(world.marketY, data.marketY || [], world.marketCount);
 
   world.corpseCount = data.corpseCount ?? 0;
   copyArray(world.corpseX, data.corpseX || [], world.corpseCount);

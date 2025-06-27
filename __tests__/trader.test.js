@@ -50,3 +50,21 @@ test('trader transfers resources between stores', () => {
   expect(world.storeFood[1]).toBeGreaterThan(0);
   expect(world.jobType[0]).toBe(JOB_IDLE);
 });
+
+test('trader sells resources at market', () => {
+  const world = createWorld();
+  world.marketCount = 1;
+  world.marketX = new Uint8Array([1]);
+  world.marketY = new Uint8Array([0]);
+
+  world.posX[0] = 0;
+  world.posY[0] = 0;
+  updateTrader(0, 0, world); // pick up from store 0
+  expect(world.carryFood[0]).toBeGreaterThan(0);
+
+  // move to market to sell
+  world.posX[0] = 1;
+  updateTrader(0, 0, world);
+  expect(world.carryFood[0]).toBe(0);
+  expect(world.jobType[0]).toBe(JOB_IDLE);
+});

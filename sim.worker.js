@@ -101,6 +101,12 @@ const storeFood  = new Uint16Array(MAX_STORES);
 const storeWood  = new Uint16Array(MAX_STORES);
 let storeCount = 0;
 
+// Рынки
+const MAX_MARKETS = 5;
+const marketX = new Uint8Array(MAX_MARKETS);
+const marketY = new Uint8Array(MAX_MARKETS);
+let marketCount = 0;
+
 const MAX_CORPSES = 50;
 const corpseX = new Uint8Array(MAX_CORPSES);
 const corpseY = new Uint8Array(MAX_CORPSES);
@@ -126,6 +132,7 @@ const world = {
   set time(v) { worldTime = (v / 24) * DAY_LENGTH; },
   houseX, houseY, houseCapacity, houseOccupants,
   storeX, storeY, storeSize, storeFood, storeWood,
+  marketX, marketY,
   corpseX, corpseY, corpseTimer,
   get agentCount() { return agentCount; },
   set agentCount(v) { agentCount = v; },
@@ -133,6 +140,8 @@ const world = {
   set houseCount(v) { houseCount = v; },
   get storeCount() { return storeCount; },
   set storeCount(v) { storeCount = v; },
+  get marketCount() { return marketCount; },
+  set marketCount(v) { marketCount = v; },
   get stockFood() { return _stockFood; },
   set stockFood(v) {
     if (v > _stockFood) tickFoodIn += v - _stockFood;
@@ -221,6 +230,7 @@ function placeBuilding(type, x, y) {
   if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return;
   for (let i = 0; i < houseCount; i++) if (houseX[i] === x && houseY[i] === y) return;
   for (let i = 0; i < storeCount; i++) if (storeX[i] === x && storeY[i] === y) return;
+  for (let i = 0; i < marketCount; i++) if (marketX[i] === x && marketY[i] === y) return;
   if (tiles[y * MAP_W + x] !== TILE_GRASS) return;
   if (type === 'house' && _stockWood >= 15 && houseCount < MAX_HOUSES) {
     houseX[houseCount] = x;
@@ -239,6 +249,11 @@ function placeBuilding(type, x, y) {
     _stockWood -= 20;
   } else if (type === 'field') {
     tiles[y * MAP_W + x] = TILE_FIELD;
+  } else if (type === 'market' && _stockWood >= 30 && marketCount < MAX_MARKETS) {
+    marketX[marketCount] = x;
+    marketY[marketCount] = y;
+    marketCount++;
+    _stockWood -= 30;
   }
 }
 
@@ -494,11 +509,15 @@ function tick() {
       food: storeFood[i],
       wood: storeWood[i]
     })),
+    markets: Array.from({ length: marketCount }, (_, i) => ({
+      x: marketX[i],
+      y: marketY[i]
+    })),
     corpses: Array.from({ length: corpseCount }, (_, i) => ({
       x: corpseX[i],
       y: corpseY[i]
     })),
-    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount },
+    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount, markets: marketCount },
     fps: Math.round(1 / dt)
   });
 
