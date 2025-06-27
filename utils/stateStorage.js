@@ -129,17 +129,31 @@ function waitForSave(worker) {
 
 export async function saveGame(worker) {
   const state = await waitForSave(worker);
-  localStorage.setItem('village-save', JSON.stringify(state));
+  const data = { savedAt: Date.now(), state };
+  localStorage.setItem('village-save', JSON.stringify(data));
+}
+
+export function getSaveInfo() {
+  const text = localStorage.getItem('village-save');
+  if (!text) return null;
+  try {
+    const data = JSON.parse(text);
+    if (data && typeof data === 'object' && 'state' in data) {
+      return { savedAt: data.savedAt, state: data.state };
+    }
+    return { savedAt: null, state: data };
+  } catch {
+    return null;
+  }
 }
 
 export function loadGame(worker) {
-  const text = localStorage.getItem('village-save');
-  if (!text) return false;
-  const state = JSON.parse(text);
-  worker.postMessage({ type: 'load', state });
+  const info = getSaveInfo();
+  if (!info) return false;
+  worker.postMessage({ type: 'load', state: info.state });
   return true;
 }
 
 export function hasSavedGame() {
-  return localStorage.getItem('village-save') !== null;
+  return getSaveInfo() !== null;
 }

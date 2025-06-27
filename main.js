@@ -3,7 +3,7 @@
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
          TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
 import { JOBS } from './data/jobTypes.js';
-import { saveGame, loadGame, hasSavedGame } from './utils/stateStorage.js';
+import { saveGame, loadGame, hasSavedGame, getSaveInfo } from './utils/stateStorage.js';
 
 class SoundManager {
   constructor() {
@@ -48,12 +48,42 @@ const notifications = document.createElement('div');
 notifications.id = 'notifications';
 document.body.appendChild(notifications);
 
+const loadModal = document.getElementById('load-modal');
+
+
 function notify(text) {
   const div = document.createElement('div');
   div.className = 'notification';
   div.textContent = text;
   notifications.appendChild(div);
   setTimeout(() => div.remove(), 4000);
+}
+
+function showLoadPrompt() {
+  const info = getSaveInfo();
+  if (!info) return;
+  const date = info.savedAt ? new Date(info.savedAt) : null;
+  const text = date ? `Load game from ${date.toLocaleString()}?` : 'Load saved game?';
+  loadModal.innerHTML = '';
+  const msg = document.createElement('div');
+  msg.textContent = text;
+  const btns = document.createElement('div');
+  const yes = document.createElement('button');
+  yes.textContent = 'Load';
+  yes.addEventListener('click', () => {
+    loadGame(worker);
+    loadModal.style.display = 'none';
+  });
+  const no = document.createElement('button');
+  no.textContent = 'Cancel';
+  no.addEventListener('click', () => {
+    loadModal.style.display = 'none';
+  });
+  btns.appendChild(yes);
+  btns.appendChild(no);
+  loadModal.appendChild(msg);
+  loadModal.appendChild(btns);
+  loadModal.style.display = 'block';
 }
 
 let mapW = 0, mapH = 0;
@@ -192,7 +222,7 @@ if (saveBtn) {
 }
 if (loadBtn) {
   loadBtn.addEventListener('click', () => {
-    loadGame(worker);
+    showLoadPrompt();
   });
 }
 
@@ -425,6 +455,6 @@ function render() {
 requestAnimationFrame(render);
 
 // load saved game on start if present
-if (hasSavedGame() && confirm('Load saved game?')) {
-  loadGame(worker);
+if (hasSavedGame()) {
+  showLoadPrompt();
 }

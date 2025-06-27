@@ -32,7 +32,8 @@ let statsIdx = 0;
 let tickFoodIn = 0, tickFoodOut = 0, tickWoodIn = 0, tickWoodOut = 0;
 
 const DAY_LENGTH = 120; // seconds per full day
-let worldTime = 0; // current time in seconds
+// Начинаем утро, чтобы жители сразу были активны
+let worldTime = DAY_LENGTH * 6 / 24; // current time in seconds
 
 
 // Карта
