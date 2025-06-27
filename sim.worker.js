@@ -19,6 +19,8 @@ const AGE_SPEED = 1 / 60;
 const HUNGER_RATE = 100 / 60; // 100 hunger per year
 const FIELD_GROW_TIME = 30;  // время созревания поля
 const FOREST_GROW_TIME = 60; // время отрастания леса
+const HOUSE_CAPACITY = 5;    // вместимость одного дома
+const HOUSE_WOOD_COST = 15;  // стоимость постройки дома в дереве
 
 // Sliding window for production/consumption statistics
 const STATS_TICKS = 60;
@@ -246,13 +248,13 @@ function placeBuilding(type, x, y) {
   for (let i = 0; i < storeCount; i++) if (storeX[i] === x && storeY[i] === y) return;
   for (let i = 0; i < marketCount; i++) if (marketX[i] === x && marketY[i] === y) return;
   if (tiles[y * MAP_W + x] !== TILE_GRASS) return;
-  if (type === 'house' && _stockWood >= 15 && houseCount < MAX_HOUSES) {
+  if (type === 'house' && _stockWood >= HOUSE_WOOD_COST && houseCount < MAX_HOUSES) {
     houseX[houseCount] = x;
     houseY[houseCount] = y;
-    houseCapacity[houseCount] = 5;
+    houseCapacity[houseCount] = HOUSE_CAPACITY;
     houseOccupants[houseCount] = 0;
     houseCount++;
-    _stockWood -= 15;
+    _stockWood -= HOUSE_WOOD_COST;
   } else if (type === 'store' && _stockWood >= 20 && storeCount < MAX_STORES) {
     storeX[storeCount] = x;
     storeY[storeCount] = y;
@@ -290,10 +292,13 @@ function updatePrices(dt) {
   const futurePop = agentCount + potential * 0.01 * 60; // вероятность рождения
   const popFactor = futurePop / Math.max(agentCount, 1);
 
-  // оценка потребности в дереве по планируемым домам
-  const desiredHouses = Math.ceil(futurePop / 2);
-  const toBuild = Math.max(0, desiredHouses - houseCount);
-  const futureWoodNeed = toBuild * 15;
+  // оценка потребности в дереве с учетом нехватки жилья
+  let totalCapacity = 0;
+  for (let h = 0; h < houseCount; h++) totalCapacity += houseCapacity[h];
+  const neededCapacity = futurePop - totalCapacity;
+  const toBuild = Math.max(0, Math.ceil(neededCapacity / HOUSE_CAPACITY));
+  const desiredHouses = houseCount + toBuild;
+  const futureWoodNeed = toBuild * HOUSE_WOOD_COST;
 
   const foodDeficit = Math.max(0, agentCount * 2 - _stockFood);
   const woodDeficit = Math.max(0, futureWoodNeed - _stockWood);
