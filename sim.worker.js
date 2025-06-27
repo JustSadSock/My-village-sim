@@ -4,7 +4,7 @@ import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
 import { init as initTrader, update as updateTrader } from './ai/trader.js';
 import { clearPathCache } from './ai/path.js';
-import { emit } from './events/events.js';
+import { emit, eventQueue } from './events/events.js';
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
          TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
 import { serializeWorld, deserializeWorld } from './utils/stateStorage.js';
@@ -470,6 +470,7 @@ function tick() {
   postMessage({
     type: 'update',
     tiles,
+    events: eventQueue.splice(0, eventQueue.length),
     agents: {
       x: posX.slice(0, agentCount),
       y: posY.slice(0, agentCount),

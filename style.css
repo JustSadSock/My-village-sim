@@ -99,3 +99,23 @@
   right: auto;
   pointer-events: none;
 }
+
+#notifications {
+  position: fixed;
+  bottom: 6px;
+  right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 200px;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.notification {
+  background: rgba(0, 0, 0, 0.6);
+  color: #f8f8f8;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
