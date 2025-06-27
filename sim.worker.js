@@ -2,6 +2,7 @@
 
 import { init as initFarmer, update as updateFarmer } from './ai/farmer.js';
 import { init as initBuilder, update as updateBuilder } from './ai/builder.js';
+import { init as initTrader, update as updateTrader } from './ai/trader.js';
 import { clearPathCache } from './ai/path.js';
 import { emit } from './events/events.js';
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
@@ -243,6 +244,7 @@ function placeBuilding(type, x, y) {
 // Инициализируем AI
 initFarmer(world);
 initBuilder(world);
+initTrader(world);
 
 function updatePrices(dt) {
   const supplyFood = foodInHist.reduce((a, b) => a + b, 0);
@@ -296,6 +298,10 @@ self.onmessage = e => {
   if (e.data && e.data.type === 'speed') gameSpeed = e.data.value;
   if (e.data && e.data.type === 'place') {
     placeBuilding(e.data.what, e.data.x, e.data.y);
+  }
+  if (e.data && e.data.type === 'set-role') {
+    const id = e.data.id;
+    if (id >= 0 && id < agentCount) role[id] = e.data.role;
   }
 };
 function tick() {
@@ -389,6 +395,7 @@ function tick() {
   // 3. Обновляем агентов
   for (let i = 0; i < agentCount; i++) {
     if (role[i] === 1) updateBuilder(i, dt, world);
+    else if (role[i] === 2) updateTrader(i, dt, world);
     else updateFarmer(i, dt, world);
   }
 

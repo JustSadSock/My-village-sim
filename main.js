@@ -20,6 +20,7 @@ const agentInfo = document.getElementById('agent-info');
 const detailsBtn = document.getElementById('details-btn');
 const speedControls = document.getElementById('speed-controls');
 const buildControls = document.getElementById('build-controls');
+const traderBtn = document.getElementById('trader-btn');
 
 let mapW = 0, mapH = 0;
 
@@ -127,6 +128,17 @@ if (buildControls) {
     }
   });
 }
+if (traderBtn) {
+  traderBtn.addEventListener('click', () => {
+    if (assignRole === JOBS.TRADER) {
+      assignRole = null;
+      traderBtn.classList.remove('active');
+    } else {
+      assignRole = JOBS.TRADER;
+      traderBtn.classList.add('active');
+    }
+  });
+}
 
 // панорамирование
 let panX = 0, panY = 0, panning = false, startX = 0, startY = 0;
@@ -136,6 +148,7 @@ canvas.addEventListener('wheel', e => {
   zoom = Math.min(Math.max(0.5, zoom * factor), 4);
 });
 let buildMode = null;
+let assignRole = null;
 
 function showAgent(e) {
   if (!mapW || !mapH) return;
@@ -162,6 +175,7 @@ function showAgent(e) {
     jobMap[JOBS.STORE_WOOD] = 'store wood';
     jobMap[JOBS.BUILD_STORE] = 'build store';
     jobMap[JOBS.FARM] = 'farm';
+    jobMap[JOBS.TRADER] = 'trader';
     const job = jobMap[agents.job[idx]] || 'unknown';
     agentInfo.textContent = `age:${agents.age[idx].toFixed(0)}\nhunger:${agents.hunger[idx].toFixed(0)}\ntask:${job}`;
     return;
@@ -191,9 +205,19 @@ canvas.addEventListener('pointerdown', e => {
     window.innerWidth / mapW,
     window.innerHeight / mapH
   ) * zoom);
+  const x = Math.floor((e.clientX - panX) / ts);
+  const y = Math.floor((e.clientY - panY) / ts);
+  if (assignRole !== null) {
+    let idx = -1;
+    for (let i = 0; i < agents.x.length; i++) {
+      if (agents.x[i] === x && agents.y[i] === y) { idx = i; break; }
+    }
+    if (idx !== -1) worker.postMessage({type:'set-role', role: assignRole, id: idx});
+    assignRole = null;
+    if (traderBtn) traderBtn.classList.remove('active');
+    return;
+  }
   if (buildMode) {
-    const x = Math.floor((e.clientX - panX) / ts);
-    const y = Math.floor((e.clientY - panY) / ts);
     worker.postMessage({type:'place', what: buildMode, x, y});
     buildMode = null;
     if (buildControls) {
