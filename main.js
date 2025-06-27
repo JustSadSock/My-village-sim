@@ -72,6 +72,18 @@ function drawStore(x, y, ts) {
   ctx.setLineDash([]);
 }
 
+function drawMarket(x, y, ts) {
+  ctx.fillStyle = '#cdbb3b';
+  ctx.fillRect(x * ts + ts * 0.05, y * ts + ts * 0.2, ts * 0.9, ts * 0.6);
+  ctx.fillStyle = '#946b2d';
+  ctx.beginPath();
+  ctx.moveTo(x * ts + ts * 0.05, y * ts + ts * 0.2);
+  ctx.lineTo(x * ts + ts * 0.5, y * ts + ts * 0.05);
+  ctx.lineTo(x * ts + ts * 0.95, y * ts + ts * 0.2);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function drawCorpse(x, y, ts) {
   ctx.fillStyle = '#aa2222';
   ctx.beginPath();
@@ -87,8 +99,8 @@ function drawVillager(x, y, ts, old) {
   ctx.fill();
 }
 let tiles, agents = { x: [], y: [], age: [], hunger: [], home: [], skillFood: [], skillWood: [], job: [] },
-    houses = [], stores = [], corpses = [];
-let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0, stores: 0 }, fps = 0;
+    houses = [], stores = [], markets = [], corpses = [];
+let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0, stores: 0, markets: 0 }, fps = 0;
 let lastTime = performance.now();
 // убираем смену дня и ночи
 
@@ -222,6 +234,15 @@ function showAgent(e) {
       return;
     }
   }
+  for (let i = 0; i < markets.length; i++) {
+    if (markets[i].x === x && markets[i].y === y) {
+      agentInfo.style.display = 'block';
+      agentInfo.style.left = e.clientX + 10 + 'px';
+      agentInfo.style.top  = e.clientY + 10 + 'px';
+      agentInfo.textContent = `market ${i}`;
+      return;
+    }
+  }
   agentInfo.style.display = 'none';
 }
 canvas.addEventListener('pointerdown', e => {
@@ -277,6 +298,7 @@ worker.onmessage = e => {
     agents   = msg.agents;
     houses   = msg.houses;
     stores   = msg.stores || [];
+    markets  = msg.markets || [];
     corpses  = msg.corpses || [];
     stats    = msg.stats;
     fps      = msg.fps;
@@ -339,6 +361,11 @@ function render() {
       drawStore(s.x, s.y, ts);
     });
 
+    // рынки
+    markets.forEach(m => {
+      drawMarket(m.x, m.y, ts);
+    });
+
     // трупы
     corpses.forEach(c => drawCorpse(c.x, c.y, ts));
 
@@ -356,11 +383,11 @@ function render() {
   hud.wood.textContent   = `Wood: ${stats.wood}`;
   hud.priceFood.textContent = `F$ ${stats.priceFood.toFixed(2)}`;
   hud.priceWood.textContent = `W$ ${stats.priceWood.toFixed(2)}`;
-  hud.houses.textContent = `Houses: ${stats.houses} S:${stats.stores}`;
+  hud.houses.textContent = `Houses: ${stats.houses} S:${stats.stores} M:${stats.markets}`;
   hud.fps.textContent    = `FPS:  ${fps}`;
 
   if (panel.style.display !== 'none') {
-    let text = `World pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses} stores:${stats.stores}\n` +
+    let text = `World pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses} stores:${stats.stores} markets:${stats.markets}\n` +
                `priceF:${stats.priceFood.toFixed(2)} priceW:${stats.priceWood.toFixed(2)}\n\n`;
     for (let i = 0; i < agents.x.length; i++) {
       text += `#${i} age:${agents.age[i].toFixed(1)} hunger:${agents.hunger[i].toFixed(0)} home:${agents.home[i]} food:${agents.skillFood[i]} wood:${agents.skillWood[i]}\n`;
