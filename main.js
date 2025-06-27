@@ -4,6 +4,26 @@ import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
          TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
 import { JOBS } from './data/jobTypes.js';
 import { saveGame, loadGame, hasSavedGame } from './utils/stateStorage.js';
+
+class SoundManager {
+  constructor() {
+    this.sounds = {
+      birth: new Audio('assets/birth.wav'),
+      death: new Audio('assets/death.wav'),
+      build: new Audio('assets/build.wav'),
+    };
+  }
+  play(name) {
+    const snd = this.sounds[name];
+    if (snd) {
+      try {
+        snd.currentTime = 0;
+      } catch (e) {}
+      snd.play().catch(() => {});
+    }
+  }
+}
+const sound = new SoundManager();
 const worker = new Worker('sim.worker.js', { type: 'module' });
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -307,10 +327,13 @@ worker.onmessage = e => {
         let text = ev.type;
         if (ev.type === 'birth') {
           text = `Birth at (${ev.payload.x},${ev.payload.y})`;
+          sound.play('birth');
         } else if (ev.type === 'death') {
           text = `Death at (${ev.payload.x},${ev.payload.y})`;
+          sound.play('death');
         } else if (ev.type === 'building-complete') {
           text = `Built ${ev.payload.type} at (${ev.payload.x},${ev.payload.y})`;
+          sound.play('build');
         }
         notify(text);
       });
