@@ -20,9 +20,11 @@ const FIELD_GROW_TIME = 30;
 const FOREST_GROW_TIME = 60;
 
 import { pathStep } from './path.js';
+import { DAILY_FOOD_NEED, LOW_FOOD_DAYS } from '../data/balance.js';
 
 export function isFoodLow(world) {
-  return world.stockFood < world.agentCount * 2;
+  const dailyUse = world.agentCount * DAILY_FOOD_NEED;
+  return world.stockFood / dailyUse < LOW_FOOD_DAYS;
 }
 
 export function init () {
