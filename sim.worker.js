@@ -226,6 +226,20 @@ for (let i = 0; i < 20; i++) {
   );
 }
 
+// начальный склад в центре карты
+placeBuilding('store', (MAP_W / 2) | 0, (MAP_H / 2) | 0);
+
+// раздаём немного еды поселенцам и складируем остаток
+let foodLeft = _stockFood;
+let woodLeft = _stockWood;
+for (let i = 0; i < agentCount && foodLeft > 0; i++) {
+  carryFood[i] = 1;
+  foodLeft--;
+}
+_stockFood = 0;
+_stockWood = 0;
+world.deposit(0, foodLeft, woodLeft);
+
 function placeBuilding(type, x, y) {
   if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return;
   for (let i = 0; i < houseCount; i++) if (houseX[i] === x && houseY[i] === y) return;
@@ -281,10 +295,14 @@ function updatePrices(dt) {
   const toBuild = Math.max(0, desiredHouses - houseCount);
   const futureWoodNeed = toBuild * 15;
 
-  const ratioFood = (demandFood + 0.1) / (supplyFood + 0.1);
-  const ratioWood = (demandWood + futureWoodNeed + 0.1) / (supplyWood + 0.1);
-  const targetFood = ratioFood * popFactor * agentCount / Math.max(_stockFood, 1);
-  const targetWood = ratioWood * agentCount / Math.max(_stockWood, 1);
+  const foodDeficit = Math.max(0, agentCount * 2 - _stockFood);
+  const woodDeficit = Math.max(0, futureWoodNeed - _stockWood);
+
+  const ratioFood = (demandFood + foodDeficit + 0.1) / (supplyFood + 0.1);
+  const ratioWood = (demandWood + woodDeficit * 0.5 + 0.1) / (supplyWood + 0.1);
+
+  const targetFood = ratioFood * popFactor * agentCount / Math.max(_stockFood + foodDeficit, 1);
+  const targetWood = ratioWood * agentCount / Math.max(_stockWood + woodDeficit, 1);
 
   _priceFood += (targetFood - _priceFood) * dt * 3;
   _priceWood += (targetWood - _priceWood) * dt * 3;
