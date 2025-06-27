@@ -3,6 +3,7 @@
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
          TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
 import { JOBS } from './data/jobTypes.js';
+import { saveGame, loadGame, hasSavedGame } from './utils/stateStorage.js';
 const worker = new Worker('sim.worker.js', { type: 'module' });
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -21,6 +22,8 @@ const detailsBtn = document.getElementById('details-btn');
 const speedControls = document.getElementById('speed-controls');
 const buildControls = document.getElementById('build-controls');
 const traderBtn = document.getElementById('trader-btn');
+const saveBtn = document.getElementById('save-btn');
+const loadBtn = document.getElementById('load-btn');
 
 let mapW = 0, mapH = 0;
 
@@ -137,6 +140,16 @@ if (traderBtn) {
       assignRole = JOBS.TRADER;
       traderBtn.classList.add('active');
     }
+  });
+}
+if (saveBtn) {
+  saveBtn.addEventListener('click', () => {
+    saveGame(worker);
+  });
+}
+if (loadBtn) {
+  loadBtn.addEventListener('click', () => {
+    loadGame(worker);
   });
 }
 
@@ -336,3 +349,8 @@ function render() {
 
 // старт отрисовки
 requestAnimationFrame(render);
+
+// load saved game on start if present
+if (hasSavedGame() && confirm('Load saved game?')) {
+  loadGame(worker);
+}
