@@ -7,6 +7,7 @@ import { clearPathCache } from './ai/path.js';
 import { emit } from './events/events.js';
 import { TILE_GRASS, TILE_WATER, TILE_FOREST, TILE_FIELD,
          TILE_FIELD_GROW, TILE_FOREST_GROW } from './data/constants.js';
+import { serializeWorld, deserializeWorld } from './utils/stateStorage.js';
 
 const MAP_W    = 64;
 const MAP_H    = 64;
@@ -302,6 +303,13 @@ self.onmessage = e => {
   if (e.data && e.data.type === 'set-role') {
     const id = e.data.id;
     if (id >= 0 && id < agentCount) role[id] = e.data.role;
+  }
+  if (e.data && e.data.type === 'save') {
+    const state = serializeWorld(world);
+    postMessage({ type: 'save', state });
+  }
+  if (e.data && e.data.type === 'load') {
+    deserializeWorld(world, e.data.state);
   }
 };
 function tick() {
