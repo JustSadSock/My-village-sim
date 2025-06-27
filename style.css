@@ -119,3 +119,18 @@
   padding: 4px 6px;
   border-radius: 4px;
 }
+
+#load-modal {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: auto;
+  max-width: 200px;
+}
+
+#load-modal button {
+  margin: 4px;
+  font-size: 12px;
+  pointer-events: auto;
+}
