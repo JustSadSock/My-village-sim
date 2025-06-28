@@ -52,6 +52,14 @@ export function update (id, dt, world) {
   // лёгкая усталость от времени
   energy[id] = Math.max(0, energy[id] - dt * 0.2);
 
+  // перекусить запасами до ночного отдыха
+  if (hunger[id] < 30 && carryFood[id] > 0) {
+    const take = Math.min(carryFood[id], 5);
+    carryFood[id] -= take;
+    const restore = (15 + Math.random() * 15) * take;
+    hunger[id] = Math.min(100, hunger[id] + restore);
+  }
+
   const hour = time % 24;
   const night = hour < 6 || hour >= 20;
   if (night) {
@@ -136,14 +144,6 @@ export function update (id, dt, world) {
       stepToward(id, tx, ty, world);
     }
     return;
-  }
-
-  // съесть припасённую еду, если уровень голода низкий
-  if (hunger[id] < 30 && carryFood[id] > 0) {
-    const take = Math.min(carryFood[id], 5);
-    carryFood[id] -= take;
-    const restore = (15 + Math.random() * 15) * take;
-    hunger[id] = Math.min(100, hunger[id] + restore);
   }
 
   /* ---------- Нести ресурсы на склад ------------------------------- */
