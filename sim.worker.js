@@ -19,7 +19,8 @@ const AGE_SPEED = 1 / 60;
 const HUNGER_RATE = 100 / 60; // 100 hunger per year
 const FIELD_GROW_TIME = 30;  // время созревания поля
 const FOREST_GROW_TIME = 60; // время отрастания леса
-const HOUSE_CAPACITY = 5;    // вместимость одного дома
+const HOUSE_CAPACITY = 6;    // вместимость одного дома
+const HOUSE_SIZE = 2;        // дома и крупные постройки занимают площадь 2x2
 const HOUSE_WOOD_COST = 15;  // стоимость постройки дома в дереве
 const STORE_WOOD_COST = 20;
 const MARKET_WOOD_COST = 30;
@@ -43,6 +44,7 @@ let worldTime = DAY_LENGTH * 6 / 24; // current time in seconds
 // Карта
 const tiles = new Uint8Array(MAP_SIZE);
 const tileTimer = new Float32Array(MAP_SIZE).fill(0);
+let tilesDirty = true;
 function addTerrain(type, seeds, steps) {
   for (let s = 0; s < seeds; s++) {
     let x = Math.random() * MAP_W | 0;
@@ -87,6 +89,7 @@ const jobType  = new Uint8Array(MAX_AGENTS);
 const role   = new Uint8Array(MAX_AGENTS);
 const buildX  = new Int16Array(MAX_AGENTS);
 const buildY  = new Int16Array(MAX_AGENTS);
+const buildSize = new Uint8Array(MAX_AGENTS).fill(1);
 const morale  = new Float32Array(MAX_AGENTS).fill(100);
 const friend  = new Int16Array(MAX_AGENTS).fill(-1);
 let agentCount = 0;
@@ -132,12 +135,15 @@ let _priceWood = 1;
 // Мир для AI
 const world = {
   MAP_W, MAP_H, tiles, tileTimer, reserved,
+  get tilesDirty() { return tilesDirty; },
+  set tilesDirty(v) { tilesDirty = v; },
   posX, posY, age, hunger, thirst, energy, homeId, parentA, parentB, spouse,
   skillFood, skillWood, workTimer, jobType, role,
-  buildX, buildY, morale, friend,
+  buildX, buildY, buildSize, morale, friend,
   get time() { return (worldTime / DAY_LENGTH) * 24; },
   set time(v) { worldTime = (v / 24) * DAY_LENGTH; },
   houseX, houseY, houseCapacity, houseOccupants,
+  houseSize: HOUSE_SIZE,
   storeX, storeY, storeSize, storeFood, storeWood,
   marketX, marketY,
   corpseX, corpseY, corpseTimer,
@@ -247,12 +253,38 @@ _stockFood = 0;
 _stockWood = 0;
 world.deposit(0, foodLeft, woodLeft);
 
+function areaFree(x, y, size) {
+  if (x < 0 || y < 0 || x + size > MAP_W || y + size > MAP_H) return false;
+  for (let oy = 0; oy < size; oy++) {
+    for (let ox = 0; ox < size; ox++) {
+      const idx = (y + oy) * MAP_W + (x + ox);
+      if (tiles[idx] !== TILE_GRASS || reserved[idx] !== -1) return false;
+    }
+  }
+  for (let h = 0; h < houseCount; h++) {
+    if (x < houseX[h] + HOUSE_SIZE && x + size > houseX[h] && y < houseY[h] + HOUSE_SIZE && y + size > houseY[h]) return false;
+  }
+  for (let s = 0; s < storeCount; s++) {
+    if (x < storeX[s] + HOUSE_SIZE && x + size > storeX[s] && y < storeY[s] + HOUSE_SIZE && y + size > storeY[s]) return false;
+  }
+  for (let m = 0; m < marketCount; m++) {
+    if (x < marketX[m] + HOUSE_SIZE && x + size > marketX[m] && y < marketY[m] + HOUSE_SIZE && y + size > marketY[m]) return false;
+  }
+  return true;
+}
+
+function markArea(x, y, size, value) {
+  for (let oy = 0; oy < size; oy++) {
+    for (let ox = 0; ox < size; ox++) {
+      reserved[(y + oy) * MAP_W + (x + ox)] = value;
+    }
+  }
+}
+
 function placeBuilding(type, x, y) {
   if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return;
-  for (let i = 0; i < houseCount; i++) if (houseX[i] === x && houseY[i] === y) return;
-  for (let i = 0; i < storeCount; i++) if (storeX[i] === x && storeY[i] === y) return;
-  for (let i = 0; i < marketCount; i++) if (marketX[i] === x && marketY[i] === y) return;
-  if (tiles[y * MAP_W + x] !== TILE_GRASS) return;
+  const footprint = type === 'field' ? 1 : HOUSE_SIZE;
+  if (!areaFree(x, y, footprint)) return;
   if (type === 'house' && _stockWood >= HOUSE_WOOD_COST && houseCount < MAX_HOUSES) {
     houseX[houseCount] = x;
     houseY[houseCount] = y;
@@ -260,6 +292,7 @@ function placeBuilding(type, x, y) {
     houseOccupants[houseCount] = 0;
     houseCount++;
     _stockWood -= HOUSE_WOOD_COST;
+    tilesDirty = true;
   } else if (type === 'store' && _stockWood >= STORE_WOOD_COST && storeCount < MAX_STORES) {
     storeX[storeCount] = x;
     storeY[storeCount] = y;
@@ -268,13 +301,16 @@ function placeBuilding(type, x, y) {
     storeWood[storeCount] = 0;
     storeCount++;
     _stockWood -= STORE_WOOD_COST;
+    tilesDirty = true;
   } else if (type === 'field') {
     tiles[y * MAP_W + x] = TILE_FIELD;
+    tilesDirty = true;
   } else if (type === 'market' && _stockWood >= MARKET_WOOD_COST && marketCount < MAX_MARKETS) {
     marketX[marketCount] = x;
     marketY[marketCount] = y;
     marketCount++;
     _stockWood -= MARKET_WOOD_COST;
+    tilesDirty = true;
   }
 }
 
@@ -338,6 +374,7 @@ postMessage({ type:'init', mapW:MAP_W, mapH:MAP_H, tiles });
 
 let last = performance.now();
 let gameSpeed = 1;
+let lastUiSend = 0;
 self.onmessage = e => {
   if (e.data && e.data.type === 'speed') gameSpeed = e.data.value;
   if (e.data && e.data.type === 'place') {
@@ -419,13 +456,16 @@ function tick() {
       if (tileTimer[i] <= 0) {
         if (tiles[i] === TILE_FIELD_GROW) tiles[i] = TILE_FIELD;
         else if (tiles[i] === TILE_FOREST_GROW) tiles[i] = TILE_FOREST;
+        tilesDirty = true;
       }
     } else {
       if (tiles[i] === TILE_GRASS && Math.random() < 0.0005 * dt) {
         tiles[i] = TILE_FIELD;
+        tilesDirty = true;
       }
       if (tiles[i] === TILE_GRASS && Math.random() < 0.0003 * dt) {
         tiles[i] = TILE_FOREST;
+        tilesDirty = true;
       }
     }
   }
@@ -538,47 +578,53 @@ function tick() {
     }
   }
 
-  // 4. Формируем статистику и отправляем её в UI
-  postMessage({
-    type: 'update',
-    tiles,
-    events: eventQueue.splice(0, eventQueue.length),
-    agents: {
-      x: posX.slice(0, agentCount),
-      y: posY.slice(0, agentCount),
-      age: age.slice(0, agentCount),
-      hunger: hunger.slice(0, agentCount),
-      energy: energy.slice(0, agentCount),
-      morale: morale.slice(0, agentCount),
-      home: homeId.slice(0, agentCount),
-      skillFood: skillFood.slice(0, agentCount),
-      skillWood: skillWood.slice(0, agentCount),
-      job: jobType.slice(0, agentCount)
-    },
-    houses: Array.from({ length: houseCount }, (_, i) => ({
-      x: houseX[i],
-      y: houseY[i],
-      capacity: houseCapacity[i],
-      occupants: houseOccupants[i]
-    })),
-    stores: Array.from({ length: storeCount }, (_, i) => ({
-      x: storeX[i],
-      y: storeY[i],
-      size: storeSize[i],
-      food: storeFood[i],
-      wood: storeWood[i]
-    })),
-    markets: Array.from({ length: marketCount }, (_, i) => ({
-      x: marketX[i],
-      y: marketY[i]
-    })),
-    corpses: Array.from({ length: corpseCount }, (_, i) => ({
-      x: corpseX[i],
-      y: corpseY[i]
-    })),
-    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount, markets: marketCount, morale: agentCount ? morale.slice(0, agentCount).reduce((a, b) => a + b, 0) / agentCount : 0 },
-    fps: Math.round(1 / dt)
-  });
+  const uiNow = performance.now();
+  if (uiNow - lastUiSend > 1000 / 12 || tilesDirty) {
+    postMessage({
+      type: 'update',
+      tiles: tilesDirty ? tiles : undefined,
+      events: eventQueue.splice(0, eventQueue.length),
+      agents: {
+        x: posX.slice(0, agentCount),
+        y: posY.slice(0, agentCount),
+        age: age.slice(0, agentCount),
+        hunger: hunger.slice(0, agentCount),
+        energy: energy.slice(0, agentCount),
+        morale: morale.slice(0, agentCount),
+        home: homeId.slice(0, agentCount),
+        skillFood: skillFood.slice(0, agentCount),
+        skillWood: skillWood.slice(0, agentCount),
+        job: jobType.slice(0, agentCount)
+      },
+      houses: Array.from({ length: houseCount }, (_, i) => ({
+        x: houseX[i],
+        y: houseY[i],
+        capacity: houseCapacity[i],
+        occupants: houseOccupants[i]
+      })),
+      stores: Array.from({ length: storeCount }, (_, i) => ({
+        x: storeX[i],
+        y: storeY[i],
+        size: storeSize[i],
+        food: storeFood[i],
+        wood: storeWood[i]
+      })),
+      markets: Array.from({ length: marketCount }, (_, i) => ({
+        x: marketX[i],
+        y: marketY[i]
+      })),
+      corpses: Array.from({ length: corpseCount }, (_, i) => ({
+        x: corpseX[i],
+        y: corpseY[i]
+      })),
+      stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount, markets: marketCount, morale: agentCount ? morale.slice(0, agentCount).reduce((a, b) => a + b, 0) / agentCount : 0 },
+      fps: Math.round(1 / dt)
+    });
+    tilesDirty = false;
+    lastUiSend = uiNow;
+  } else {
+    eventQueue.length = 0;
+  }
 
   setTimeout(tick, 1000 / 30);
 }

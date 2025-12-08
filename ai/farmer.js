@@ -257,6 +257,7 @@ export function update (id, dt, world) {
       if (jobType[id] === JOB_HARVEST) {
         tiles[idx] = TILE_FIELD_GROW;
         world.tileTimer[idx] = FIELD_GROW_TIME;
+        world.tilesDirty = true;
         carryFood[id] = Math.min(10, carryFood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (age[id] <= 60 && skillFood[id] < cap && Math.random() < 0.25) skillFood[id]++;
@@ -265,6 +266,7 @@ export function update (id, dt, world) {
       if (jobType[id] === JOB_CHOP) {
         tiles[idx] = TILE_FOREST_GROW;
         world.tileTimer[idx] = FOREST_GROW_TIME;
+        world.tilesDirty = true;
         carryWood[id] = Math.min(10, carryWood[id] + 1);
         const cap = Math.min(20, Math.floor(age[id] / 3.5));
         if (age[id] <= 60 && skillWood[id] < cap && Math.random() < 0.25) skillWood[id]++;

@@ -88,6 +88,7 @@ function showLoadPrompt() {
 }
 
 let mapW = 0, mapH = 0;
+const BUILD_SIZE = 2;
 
 let animTimer = 0;
 let zoom = 1;
@@ -108,6 +109,7 @@ const TILE_COLORS = {
 };
 
 function getTileSize() {
+  if (!mapW || !mapH) return 0;
   return Math.floor(Math.min(
     window.innerWidth / mapW,
     window.innerHeight / mapH
@@ -115,34 +117,37 @@ function getTileSize() {
 }
 
 function drawHouse(x, y, ts) {
+  const size = ts * BUILD_SIZE;
   ctx.fillStyle = '#b57a40';
-  ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.4, ts * 0.8, ts * 0.6);
+  ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.4, size - ts * 0.2, size - ts * 0.4);
   ctx.fillStyle = '#8a4a2f';
   ctx.beginPath();
   ctx.moveTo(x * ts + ts * 0.05, y * ts + ts * 0.4);
-  ctx.lineTo(x * ts + ts / 2, y * ts + ts * 0.05);
-  ctx.lineTo(x * ts + ts * 0.95, y * ts + ts * 0.4);
+  ctx.lineTo(x * ts + size / 2, y * ts + ts * 0.05);
+  ctx.lineTo(x * ts + size - ts * 0.05, y * ts + ts * 0.4);
   ctx.closePath();
   ctx.fill();
 }
 
 function drawStore(x, y, ts) {
+  const size = ts * BUILD_SIZE;
   ctx.fillStyle = '#777';
-  ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.1, ts * 0.8, ts * 0.8);
+  ctx.fillRect(x * ts + ts * 0.1, y * ts + ts * 0.1, size - ts * 0.2, size - ts * 0.2);
   ctx.strokeStyle = '#fff';
   ctx.setLineDash([ts * 0.2, ts * 0.2]);
-  ctx.strokeRect(x * ts + ts * 0.1, y * ts + ts * 0.1, ts * 0.8, ts * 0.8);
+  ctx.strokeRect(x * ts + ts * 0.1, y * ts + ts * 0.1, size - ts * 0.2, size - ts * 0.2);
   ctx.setLineDash([]);
 }
 
 function drawMarket(x, y, ts) {
+  const size = ts * BUILD_SIZE;
   ctx.fillStyle = '#cdbb3b';
-  ctx.fillRect(x * ts + ts * 0.05, y * ts + ts * 0.2, ts * 0.9, ts * 0.6);
+  ctx.fillRect(x * ts + ts * 0.05, y * ts + ts * 0.2, size - ts * 0.1, size - ts * 0.4);
   ctx.fillStyle = '#946b2d';
   ctx.beginPath();
   ctx.moveTo(x * ts + ts * 0.05, y * ts + ts * 0.2);
-  ctx.lineTo(x * ts + ts * 0.5, y * ts + ts * 0.05);
-  ctx.lineTo(x * ts + ts * 0.95, y * ts + ts * 0.2);
+  ctx.lineTo(x * ts + size / 2, y * ts + ts * 0.05);
+  ctx.lineTo(x * ts + size - ts * 0.05, y * ts + ts * 0.2);
   ctx.closePath();
   ctx.fill();
 }
@@ -199,21 +204,23 @@ function drawGrid(ts) {
 function drawPreview(ts) {
   if (!buildMode || !hoverCell) return;
   const { x, y } = hoverCell;
+  const size = buildMode === 'field' ? 1 : BUILD_SIZE;
   const valid = canPlacePreview(buildMode, x, y);
   ctx.save();
   ctx.globalAlpha = 0.5;
   ctx.fillStyle = valid ? 'rgba(96, 199, 107, 0.6)' : 'rgba(215, 91, 91, 0.6)';
-  ctx.fillRect(x * ts, y * ts, ts, ts);
+  ctx.fillRect(x * ts, y * ts, ts * size, ts * size);
   ctx.globalAlpha = 1;
   ctx.strokeStyle = valid ? '#2f6e33' : '#7a1b1b';
   ctx.lineWidth = 2;
-  ctx.strokeRect(x * ts + 1, y * ts + 1, ts - 2, ts - 2);
+  ctx.strokeRect(x * ts + 1, y * ts + 1, ts * size - 2, ts * size - 2);
   ctx.restore();
 }
 let tiles, agents = { x: [], y: [], age: [], hunger: [], energy: [], morale: [], home: [], skillFood: [], skillWood: [], job: [] },
     houses = [], stores = [], markets = [], corpses = [];
 let stats = { pop: 0, food: 0, wood: 0, priceFood: 0, priceWood: 0, houses: 0, stores: 0, markets: 0, morale: 0 }, fps = 0;
 let lastTime = performance.now();
+let lastHudUpdate = 0;
 // убираем смену дня и ночи
 
 // учёт DPR для чётких пикселей
@@ -298,22 +305,25 @@ canvas.addEventListener('wheel', e => {
 let buildMode = null;
 let assignRole = null;
 
-function tileOccupied(x, y) {
-  return houses.some(h => h.x === x && h.y === y) ||
-         stores.some(s => s.x === x && s.y === y) ||
-         markets.some(m => m.x === x && m.y === y);
+function tileOccupied(x, y, size = BUILD_SIZE) {
+  const overlaps = (arr) => arr.some(b => x < b.x + size && x + size > b.x && y < b.y + size && y + size > b.y);
+  return overlaps(houses) || overlaps(stores) || overlaps(markets);
 }
 
 function canPlacePreview(type, x, y) {
   if (!tiles || !mapW || !mapH) return false;
   if (x < 0 || x >= mapW || y < 0 || y >= mapH) return false;
-  if (tileOccupied(x, y)) return false;
-  const tile = tiles[y * mapW + x];
-  const isGrass = tile === TILE_GRASS;
-  if (type === 'field') {
-    if (!(isGrass || tile === TILE_FIELD || tile === TILE_FIELD_GROW)) return false;
-  } else {
-    if (!isGrass) return false;
+  const size = type === 'field' ? 1 : BUILD_SIZE;
+  if (x + size > mapW || y + size > mapH) return false;
+  if (tileOccupied(x, y, size)) return false;
+  for (let oy = 0; oy < size; oy++) {
+    for (let ox = 0; ox < size; ox++) {
+      const tile = tiles[(y + oy) * mapW + (x + ox)];
+      const isGrass = tile === TILE_GRASS;
+      if (type === 'field') {
+        if (!(isGrass || tile === TILE_FIELD || tile === TILE_FIELD_GROW)) return false;
+      } else if (!isGrass) return false;
+    }
   }
   if (type === 'house' && stats.wood < HOUSE_WOOD_COST) return false;
   if (type === 'store' && stats.wood < STORE_WOOD_COST) return false;
@@ -432,7 +442,7 @@ worker.onmessage = e => {
     mapW = msg.mapW; mapH = msg.mapH;
     tiles = msg.tiles;
   } else if (msg.type === 'update') {
-    tiles    = msg.tiles;
+    if (msg.tiles) tiles = msg.tiles;
     agents   = msg.agents;
     houses   = msg.houses;
     stores   = msg.stores || [];
@@ -472,12 +482,11 @@ function render() {
   ctx.scale(zoom, zoom);
 
   if (tiles && mapW && mapH) {
-    // размер одного тайла, чтобы весь мир помещался
-    const base = Math.floor(Math.min(
-      window.innerWidth / mapW,
-      window.innerHeight / mapH
-    ));
-    const ts = base;
+    const ts = getTileSize();
+    if (!ts) {
+      requestAnimationFrame(render);
+      return;
+    }
     // отрисовка земли
     for (let y = 0; y < mapH; y++) {
       for (let x = 0; x < mapW; x++) {
@@ -530,15 +539,17 @@ function render() {
 
   ctx.restore();
 
-  // обновляем HUD
-  hud.pop.textContent  = `Pop:  ${stats.pop}`;
-  hud.food.textContent   = `Food: ${stats.food}`;
-  hud.wood.textContent   = `Wood: ${stats.wood}`;
-  hud.mood.textContent   = `Mood: ${stats.morale.toFixed(1)}`;
-  hud.priceFood.textContent = `F$ ${stats.priceFood.toFixed(2)}`;
-  hud.priceWood.textContent = `W$ ${stats.priceWood.toFixed(2)}`;
-  hud.houses.textContent = `Houses: ${stats.houses} S:${stats.stores} M:${stats.markets}`;
-  hud.fps.textContent    = `FPS:  ${fps}`;
+  if (now - lastHudUpdate > 100) {
+    hud.pop.textContent  = `Pop:  ${stats.pop}`;
+    hud.food.textContent   = `Food: ${stats.food}`;
+    hud.wood.textContent   = `Wood: ${stats.wood}`;
+    hud.mood.textContent   = `Mood: ${stats.morale.toFixed(1)}`;
+    hud.priceFood.textContent = `F$ ${stats.priceFood.toFixed(2)}`;
+    hud.priceWood.textContent = `W$ ${stats.priceWood.toFixed(2)}`;
+    hud.houses.textContent = `Houses: ${stats.houses} S:${stats.stores} M:${stats.markets}`;
+    hud.fps.textContent    = `FPS:  ${fps}`;
+    lastHudUpdate = now;
+  }
 
   if (panel.style.display !== 'none') {
     let text = `World pop:${stats.pop} food:${stats.food} wood:${stats.wood} houses:${stats.houses} stores:${stats.stores} markets:${stats.markets}\n` +

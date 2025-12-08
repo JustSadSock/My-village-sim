@@ -24,10 +24,11 @@ export function update(id, dt, world) {
   const {
     age, posX, posY, homeId, hunger, energy,
     houseX, houseY, houseCapacity, houseOccupants, houseCount,
-    MAP_W, MAP_H, tiles, reserved,
+    MAP_W, MAP_H, tiles, reserved, houseSize,
     stockWood, stockFood, workTimer, jobType,
-    buildX, buildY,
+    buildX, buildY, buildSize,
     storeX, storeY, storeSize, storeCount, storeFood,
+    marketX, marketY, marketCount,
     agentCount, withdraw,
     carryFood, role, morale, friend, spouse, parentA, parentB,
     time
@@ -140,29 +141,29 @@ export function update(id, dt, world) {
 
     // На месте строительства
     if (workTimer[id] === 0) {
-      if (jobType[id] === JOB_BUILD) {
-        if (!takeWood(WOOD_COST, world)) {
-          reserved[buildY[id] * MAP_W + buildX[id]] = -1;
-          jobType[id] = JOB_IDLE;
-          buildX[id] = buildY[id] = -1;
-          return;
-        }
-        const moraleMul = 0.5 + morale[id] / 200;
-        workTimer[id] = TIME_BUILD / moraleMul;
-      } else if (jobType[id] === JOB_BUILD_STORE) {
-        if (!takeWood(STORE_WOOD, world)) {
-          reserved[buildY[id] * MAP_W + buildX[id]] = -1;
-          jobType[id] = JOB_IDLE;
-          buildX[id] = buildY[id] = -1;
-          return;
-        }
-        const moraleMul = 0.5 + morale[id] / 200;
-        workTimer[id] = TIME_STORE / moraleMul;
-      } else {
-        const moraleMul = 0.5 + morale[id] / 200;
-        workTimer[id] = TIME_FARM / moraleMul;
+    if (jobType[id] === JOB_BUILD) {
+      if (!takeWood(WOOD_COST, world)) {
+        releaseArea(buildX[id], buildY[id], buildSize[id], reserved, MAP_W);
+        jobType[id] = JOB_IDLE;
+        buildX[id] = buildY[id] = -1;
+        return;
       }
+      const moraleMul = 0.5 + morale[id] / 200;
+      workTimer[id] = TIME_BUILD / moraleMul;
+    } else if (jobType[id] === JOB_BUILD_STORE) {
+      if (!takeWood(STORE_WOOD, world)) {
+        releaseArea(buildX[id], buildY[id], buildSize[id], reserved, MAP_W);
+        jobType[id] = JOB_IDLE;
+        buildX[id] = buildY[id] = -1;
+        return;
+      }
+      const moraleMul = 0.5 + morale[id] / 200;
+      workTimer[id] = TIME_STORE / moraleMul;
+    } else {
+      const moraleMul = 0.5 + morale[id] / 200;
+      workTimer[id] = TIME_FARM / moraleMul;
     }
+  }
 
     workTimer[id] -= dt;
     if (workTimer[id] <= 0) {
@@ -170,7 +171,7 @@ export function update(id, dt, world) {
         const hc = world.houseCount;
         world.houseX[hc] = buildX[id];
         world.houseY[hc] = buildY[id];
-        world.houseCapacity[hc] = 5;
+        world.houseCapacity[hc] = 6;
         world.houseOccupants[hc] = 0;
         world.houseCount = hc + 1;
         emit('building-complete', { type: 'house', x: buildX[id], y: buildY[id] });
@@ -209,9 +210,10 @@ export function update(id, dt, world) {
         emit('building-complete', { type: 'store', x: buildX[id], y: buildY[id] });
       } else {
         tiles[buildY[id] * MAP_W + buildX[id]] = TILE_FIELD;
+        world.tilesDirty = true;
         emit('building-complete', { type: 'field', x: buildX[id], y: buildY[id] });
       }
-      reserved[buildY[id] * MAP_W + buildX[id]] = -1;
+      releaseArea(buildX[id], buildY[id], buildSize[id], reserved, MAP_W);
       jobType[id] = JOB_IDLE;
       buildX[id] = buildY[id] = -1;
     }
@@ -243,24 +245,20 @@ export function update(id, dt, world) {
       if (d < dist) { dist = d; refX = houseX[i]; refY = houseY[i]; }
     }
   }
-  for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] !== TILE_GRASS || reserved[i] !== -1) continue;
-    const x = i % MAP_W, y = (i / MAP_W) | 0;
-    let occupied = false;
-    for (let h2 = 0; h2 < houseCount; h2++) {
-      if (houseX[h2] === x && houseY[h2] === y) { occupied = true; break; }
+  const footprint = buildStore || needBuild ? houseSize : 1;
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (!areaBuildable(x, y, footprint, tiles, reserved, houseX, houseY, houseCount, storeX, storeY, storeCount, marketX, marketY, marketCount, MAP_W, MAP_H, houseSize)) continue;
+      const d = (x - refX) ** 2 + (y - refY) ** 2;
+      if (d < best) { best = d; bx = x; by = y; }
     }
-    for (let s2 = 0; s2 < storeCount && !occupied; s2++) {
-      if (storeX[s2] === x && storeY[s2] === y) { occupied = true; }
-    }
-    if (occupied) continue;
-    const d = (x - refX) ** 2 + (y - refY) ** 2;
-    if (d < best) { best = d; bx = x; by = y; }
   }
   if (bx < 0) return;
 
   buildX[id] = bx; buildY[id] = by;
-  reserved[by * MAP_W + bx] = id;
+  buildSize[id] = footprint;
+  reserveArea(bx, by, footprint, reserved, id, MAP_W);
   if (buildStore) {
     jobType[id] = JOB_BUILD_STORE;
     const moraleMul = 0.5 + morale[id] / 200;
@@ -281,6 +279,43 @@ function stepToward(id, tx, ty, world) {
   const { x, y } = pathStep(posX[id], posY[id], tx, ty, world);
   posX[id] = x;
   posY[id] = y;
+}
+
+function areaBuildable(x, y, size, tiles, reserved, houseX, houseY, houseCount, storeX, storeY, storeCount, marketX, marketY, marketCount, width, height, occupiedSize) {
+  if (x < 0 || y < 0 || x + size > width || y + size > height) return false;
+  for (let oy = 0; oy < size; oy++) {
+    for (let ox = 0; ox < size; ox++) {
+      const idx = (y + oy) * width + (x + ox);
+      if (tiles[idx] !== TILE_GRASS || reserved[idx] !== -1) return false;
+    }
+  }
+  const block = occupiedSize || size;
+  for (let i = 0; i < houseCount; i++) {
+    if (x < houseX[i] + block && x + size > houseX[i] && y < houseY[i] + block && y + size > houseY[i]) return false;
+  }
+  for (let i = 0; i < storeCount; i++) {
+    if (x < storeX[i] + block && x + size > storeX[i] && y < storeY[i] + block && y + size > storeY[i]) return false;
+  }
+  for (let i = 0; i < marketCount; i++) {
+    if (x < marketX[i] + block && x + size > marketX[i] && y < marketY[i] + block && y + size > marketY[i]) return false;
+  }
+  return true;
+}
+
+function reserveArea(x, y, size, reserved, id, width) {
+  for (let oy = 0; oy < size; oy++) {
+    for (let ox = 0; ox < size; ox++) {
+      reserved[(y + oy) * width + (x + ox)] = id;
+    }
+  }
+}
+
+function releaseArea(x, y, size, reserved, width) {
+  for (let oy = 0; oy < size; oy++) {
+    for (let ox = 0; ox < size; ox++) {
+      reserved[(y + oy) * width + (x + ox)] = -1;
+    }
+  }
 }
 
 function takeWood(amount, world) {
