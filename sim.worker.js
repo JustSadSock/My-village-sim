@@ -21,6 +21,10 @@ const FIELD_GROW_TIME = 30;  // время созревания поля
 const FOREST_GROW_TIME = 60; // время отрастания леса
 const HOUSE_CAPACITY = 5;    // вместимость одного дома
 const HOUSE_WOOD_COST = 15;  // стоимость постройки дома в дереве
+const STORE_WOOD_COST = 20;
+const MARKET_WOOD_COST = 30;
+const FOOD_SPOIL_RATE = 0.002; // доля порчи пищи в хранилище в секунду
+const CORPSE_MORALE_RADIUS2 = 9; // квадрат дистанции для штрафа по морали
 
 // Sliding window for production/consumption statistics
 const STATS_TICKS = 60;
@@ -256,21 +260,21 @@ function placeBuilding(type, x, y) {
     houseOccupants[houseCount] = 0;
     houseCount++;
     _stockWood -= HOUSE_WOOD_COST;
-  } else if (type === 'store' && _stockWood >= 20 && storeCount < MAX_STORES) {
+  } else if (type === 'store' && _stockWood >= STORE_WOOD_COST && storeCount < MAX_STORES) {
     storeX[storeCount] = x;
     storeY[storeCount] = y;
     storeSize[storeCount] = 4;
     storeFood[storeCount] = 0;
     storeWood[storeCount] = 0;
     storeCount++;
-    _stockWood -= 20;
+    _stockWood -= STORE_WOOD_COST;
   } else if (type === 'field') {
     tiles[y * MAP_W + x] = TILE_FIELD;
-  } else if (type === 'market' && _stockWood >= 30 && marketCount < MAX_MARKETS) {
+  } else if (type === 'market' && _stockWood >= MARKET_WOOD_COST && marketCount < MAX_MARKETS) {
     marketX[marketCount] = x;
     marketY[marketCount] = y;
     marketCount++;
-    _stockWood -= 30;
+    _stockWood -= MARKET_WOOD_COST;
   }
 }
 
@@ -426,6 +430,17 @@ function tick() {
     }
   }
 
+  // Порча запасов еды в складах
+  for (let i = 0; i < storeCount; i++) {
+    if (storeFood[i] <= 0) continue;
+    const spoil = Math.min(storeFood[i], storeFood[i] * FOOD_SPOIL_RATE * dt);
+    if (spoil > 0) {
+      storeFood[i] -= spoil;
+      _stockFood = Math.max(0, _stockFood - spoil);
+      tickFoodOut += spoil;
+    }
+  }
+
   updatePrices(dt);
 
   for (let c = 0; c < corpseCount; c++) {
@@ -441,6 +456,17 @@ function tick() {
 
   // 3. Обновляем агентов
   for (let i = 0; i < agentCount; i++) {
+    // запах трупов бьёт по морали
+    for (let c = 0; c < corpseCount; c++) {
+      const dx = posX[i] - corpseX[c];
+      const dy = posY[i] - corpseY[c];
+      const dist2 = dx * dx + dy * dy;
+      if (dist2 <= CORPSE_MORALE_RADIUS2) {
+        const stress = (1 - dist2 / CORPSE_MORALE_RADIUS2) * 8;
+        morale[i] = Math.max(0, morale[i] - stress * dt);
+        break;
+      }
+    }
     if (role[i] === 1) updateBuilder(i, dt, world);
     else if (role[i] === 2) updateTrader(i, dt, world);
     else updateFarmer(i, dt, world);
@@ -450,8 +476,10 @@ function tick() {
   for (let h = 0; h < houseCount && agentCount < MAX_AGENTS; h++) {
     if (houseOccupants[h] >= 2 && houseOccupants[h] < houseCapacity[h]) {
       const adults = [];
+      let moraleSum = 0;
       for (let i = 0; i < agentCount; i++) {
         if (homeId[i] === h && age[i] >= 16 && age[i] <= 45) adults.push(i);
+        if (homeId[i] === h) moraleSum += morale[i];
       }
       if (adults.length >= 2 && Math.random() < dt * 0.01) {
         let pair = null;
@@ -464,16 +492,21 @@ function tick() {
         const p1 = pair ? pair[0] : adults[Math.random() * adults.length | 0];
         let p2 = pair ? pair[1] : p1;
         while (!pair && p2 === p1) p2 = adults[Math.random() * adults.length | 0];
-        const child = agentCount;
-        spawnAgent(houseX[h], houseY[h], 0);
-        homeId[child] = h;
-        parentA[child] = p1;
-        parentB[child] = p2;
-        spouse[child]  = -1;
-        emit('birth', { id: child, x: houseX[h], y: houseY[h] });
-        if (spouse[p1] === -1) spouse[p1] = p2;
-        if (spouse[p2] === -1) spouse[p2] = p1;
-        houseOccupants[h]++;
+        const occupantCount = houseOccupants[h] || 1;
+        const moraleAvg = moraleSum / occupantCount;
+        const moraleBoost = Math.min(1.6, Math.max(0.4, moraleAvg / 80));
+        if (Math.random() < moraleBoost) {
+          const child = agentCount;
+          spawnAgent(houseX[h], houseY[h], 0);
+          homeId[child] = h;
+          parentA[child] = p1;
+          parentB[child] = p2;
+          spouse[child]  = -1;
+          emit('birth', { id: child, x: houseX[h], y: houseY[h] });
+          if (spouse[p1] === -1) spouse[p1] = p2;
+          if (spouse[p2] === -1) spouse[p2] = p1;
+          houseOccupants[h]++;
+        }
       }
     }
   }
@@ -515,6 +548,8 @@ function tick() {
       y: posY.slice(0, agentCount),
       age: age.slice(0, agentCount),
       hunger: hunger.slice(0, agentCount),
+      energy: energy.slice(0, agentCount),
+      morale: morale.slice(0, agentCount),
       home: homeId.slice(0, agentCount),
       skillFood: skillFood.slice(0, agentCount),
       skillWood: skillWood.slice(0, agentCount),
@@ -541,7 +576,7 @@ function tick() {
       x: corpseX[i],
       y: corpseY[i]
     })),
-    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount, markets: marketCount },
+    stats: { pop: agentCount, food: _stockFood, wood: _stockWood, priceFood: _priceFood, priceWood: _priceWood, houses: houseCount, stores: storeCount, markets: marketCount, morale: agentCount ? morale.slice(0, agentCount).reduce((a, b) => a + b, 0) / agentCount : 0 },
     fps: Math.round(1 / dt)
   });
 
